@@ -174,7 +174,7 @@
                 setVisRydBekræft(false);
             };
 
-            // --- Hovedberegning (Opdateret til individuel formtalsberegning) ---
+            // --- Hovedberegning ---
             const [resultater, setResultater] = useState({
                 stamtalPrHa: 0,
                 G_ha: 0,
@@ -209,22 +209,16 @@
                 let hd_sum = 0;
                 let gh_sum = 0;
 
-                // Løb igennem HVERT træ
                 trees.forEach(tree => {
-                    // 1. Grundflade (m2)
                     const radiusM = (tree.d / 100) / 2;
                     const g_i = Math.PI * Math.pow(radiusM, 2);
                     
-                    // 2. Find det PRÆCISE formtal til dette specifikke træ
                     let f_i = valgtArt.standardFormtal;
                     if (gridData) {
                         f_i = beregnFormtalFraGrid(tree.d, tree.h, gridData);
                     }
 
-                    // 3. Beregn volumen
                     const v_i = g_i * tree.h * f_i;
-
-                    // 4. H/D forhold
                     const hd_i = (tree.h * 100) / tree.d;
 
                     g_sum += g_i;
@@ -233,25 +227,18 @@
                     gh_sum += (g_i * tree.h);
                 });
 
-                // Skaler op til Hektar
                 const G_ha = g_sum * opgangningsFaktor;
                 const V_ha = v_sum * opgangningsFaktor;
                 const V_total = V_ha * arealNum;
 
-                // Beregn Dg (Grundflademiddeldiameter)
                 const g_mean = g_sum / N_plot; 
                 const Dg_meter = Math.sqrt(g_mean / Math.PI) * 2; 
                 const Dg = Dg_meter * 100; 
 
                 const HD_mean = hd_sum / N_plot;
-
-                // Beregn Loreys Middelhøjde (vægtet med grundflade)
                 const loreysH = g_sum > 0 ? gh_sum / g_sum : 0;
-                
-                // Beregn Middelstammens volumen (gennemsnitligt volumen pr. træ)
                 const v_g = v_sum / N_plot;
 
-                // Beregn et gennemsnitligt "synligt" formtal for brugerens skyld (Volumen divideret med Cylinder)
                 const h_mean = trees.reduce((acc, t) => acc + t.h, 0) / N_plot;
                 const gnsFormtal = v_sum / (g_sum * h_mean);
 
@@ -270,24 +257,26 @@
 
             // --- Eksport & Deling ---
             const genererResumeTekst = () => {
-                let tekst = `Skovtaksation: ${TRAEARTER[valgtTræIndeks].navn}
-Areal: ${areal || 0} ha (Prøveflade r=${radius || 0}m)
-----------------
-Målt: ${trees.length} træ(er)
-Stamtal: ${Math.round(resultater.stamtalPrHa)} stk/ha
-Grundflade (G): ${resultater.G_ha.toFixed(1)} m²/ha
-Dg: ${resultater.Dg.toFixed(1)} cm
-Loreys Højde: ${resultater.loreysH.toFixed(1)} m
-Middeltræ (Vg): ${resultater.v_g.toFixed(2)} m³
-----------------
-Volumen: ${resultater.volumenHa.toFixed(1)} m³/ha
-Total Volumen: ${resultater.volumenTotal.toFixed(1)} m³
-----------------
-MÅLTE TRÆER (Dia. / Højde):
-`;
-                // Tilføjer alle rå opmålinger til teksten
+                // Rent tekst layout uden emojis
+                let tekst = `SKOVTAKSATION: ${TRAEARTER[valgtTræIndeks].navn}\n`;
+                tekst += `Areal: ${areal || 0} ha  |  Prøveflade r=${radius || 0}m\n`;
+                tekst += `--------------------------------\n`;
+                tekst += `NØGLETAL\n`;
+                tekst += `• Målte træer:    ${trees.length} stk\n`;
+                tekst += `• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n`;
+                tekst += `• Grundflade (G): ${resultater.G_ha.toFixed(1)} m²/ha\n`;
+                tekst += `• Dg:             ${resultater.Dg.toFixed(1)} cm\n`;
+                tekst += `• Loreys Højde:   ${resultater.loreysH.toFixed(1)} m\n`;
+                tekst += `• Middeltræ (Vg): ${resultater.v_g.toFixed(3)} m³\n`;
+                tekst += `--------------------------------\n`;
+                tekst += `VEDMASSE\n`;
+                tekst += `• Pr. hektar:     ${resultater.volumenHa.toFixed(1)} m³/ha\n`;
+                tekst += `• Total volumen:  ${resultater.volumenTotal.toFixed(1)} m³\n`;
+                tekst += `--------------------------------\n`;
+                tekst += `MÅLTE TRÆER (Dia. / Højde):\n`;
+                
                 [...trees].reverse().forEach((t, index) => {
-                    tekst += `#${trees.length - index}: ${t.d} cm / ${t.h} m\n`;
+                    tekst += `  #${trees.length - index}: ${t.d} cm / ${t.h} m\n`;
                 });
                 
                 return tekst;
@@ -329,28 +318,31 @@ MÅLTE TRÆER (Dia. / Højde):
             };
 
             const downloadCSV = () => {
-                let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "BESTANDSDATA\n";
-                csvContent += `Traeart,${TRAEARTER[valgtTræIndeks].navn}\n`;
-                csvContent += `Radius (m),${radius}\n`;
-                csvContent += `Areal (ha),${areal}\n`;
-                csvContent += `Stamtal (stk/ha),${Math.round(resultater.stamtalPrHa)}\n`;
-                csvContent += `Grundflade (m2/ha),${resultater.G_ha.toFixed(2)}\n`;
-                csvContent += `Dg (cm),${resultater.Dg.toFixed(2)}\n`;
-                csvContent += `Loreys Hoejde (m),${resultater.loreysH.toFixed(2)}\n`;
-                csvContent += `Middelstrae (m3),${resultater.v_g.toFixed(3)}\n`;
-                csvContent += `Volumen (m3/ha),${resultater.volumenHa.toFixed(2)}\n`;
-                csvContent += `Total Volumen (m3),${resultater.volumenTotal.toFixed(2)}\n\n`;
+                let csvContent = "\uFEFF"; 
                 
-                csvContent += "MAALTE TRAEER\n";
-                csvContent += "Trae Nr,Diameter (cm),Hoejde (m)\n";
+                csvContent += "BESTANDSDATA\n";
+                csvContent += `Træart;${TRAEARTER[valgtTræIndeks].navn}\n`;
+                csvContent += `Radius (m);${radius}\n`;
+                csvContent += `Areal (ha);${areal}\n`;
+                csvContent += `Stamtal (stk/ha);${Math.round(resultater.stamtalPrHa)}\n`;
+                csvContent += `Grundflade (m2/ha);${resultater.G_ha.toFixed(2)}\n`;
+                csvContent += `Dg (cm);${resultater.Dg.toFixed(2)}\n`;
+                csvContent += `Loreys Højde (m);${resultater.loreysH.toFixed(2)}\n`;
+                csvContent += `Middeltræ (m3);${resultater.v_g.toFixed(3)}\n`;
+                csvContent += `Volumen (m3/ha);${resultater.volumenHa.toFixed(2)}\n`;
+                csvContent += `Total Volumen (m3);${resultater.volumenTotal.toFixed(2)}\n\n`;
+                
+                csvContent += "MÅLTE TRÆER\n";
+                csvContent += "Træ Nr;Diameter (cm);Højde (m)\n";
                 [...trees].reverse().forEach((t, index) => {
-                    csvContent += `${trees.length - index},${t.d},${t.h}\n`;
+                    csvContent += `${trees.length - index};${t.d};${t.h}\n`;
                 });
 
-                const encodedUri = encodeURI(csvContent);
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
                 const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
+                link.setAttribute("href", url);
                 link.setAttribute("download", `skovtaksation_${new Date().toISOString().split('T')[0]}.csv`);
                 document.body.appendChild(link);
                 link.click();
