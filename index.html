@@ -2,8 +2,15 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vedmasseberegner</title>
+    
+    <!-- PWA Opsætning -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#166534">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- Henter React og værktøjer direkte fra nettet -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -38,6 +45,11 @@
         const Activity = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
         const Plus = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
         const Trash2 = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
+        const Download = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
+        const Share2 = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>;
+        const Copy = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
+        const Check = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
+        const RefreshCw = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
 
         // --- DATA ---
         const FORMTAL_GRIDS = {
@@ -69,19 +81,45 @@
         ];
 
         function SkovBeregner() {
-            // --- Input State ---
-            const [radius, setRadius] = useState(""); 
-            const [areal, setAreal] = useState(""); 
-            const [valgtTræIndeks, setValgtTræIndeks] = useState(7); // Default til 7 = Rødgran
+            // --- Funktion til at hente lokalt gemte data sikkert ---
+            const getSavedState = (key, defaultValue) => {
+                try {
+                    const saved = localStorage.getItem(key);
+                    return saved !== null ? JSON.parse(saved) : defaultValue;
+                } catch (e) {
+                    return defaultValue;
+                }
+            };
 
-            // Træ-liste state (Tom fra start)
-            const [trees, setTrees] = useState([]);
+            // --- Input State (Nu med indlæsning fra browserens hukommelse) ---
+            const [radius, setRadius] = useState(() => getSavedState('skov_radius', "")); 
+            const [areal, setAreal] = useState(() => getSavedState('skov_areal', "")); 
+            const [valgtTræIndeks, setValgtTræIndeks] = useState(() => getSavedState('skov_art', 7));
+
+            // Træ-liste state
+            const [trees, setTrees] = useState(() => getSavedState('skov_trees', []));
             
-            // State til indtastningsfeltet
+            // State til indtastningsfeltet (gemmes ikke lokalt)
             const [nyDiameter, setNyDiameter] = useState("");
             const [nyHoejde, setNyHoejde] = useState(""); 
             
+            // Ekstra UI-state
+            const [kopieret, setKopieret] = useState(false);
+            const [visRydBekræft, setVisRydBekræft] = useState(false);
+            
             const dInputRef = useRef(null); 
+
+            // --- Gem til lokal hukommelse hver gang noget ændres ---
+            useEffect(() => {
+                try {
+                    localStorage.setItem('skov_radius', JSON.stringify(radius));
+                    localStorage.setItem('skov_areal', JSON.stringify(areal));
+                    localStorage.setItem('skov_art', JSON.stringify(valgtTræIndeks));
+                    localStorage.setItem('skov_trees', JSON.stringify(trees));
+                } catch (e) {
+                    console.warn("Kunne ikke gemme data lokalt.");
+                }
+            }, [radius, areal, valgtTræIndeks, trees]);
 
             // --- Interpolation: Udregner det præcise formtal ud fra D og H ---
             const beregnFormtalFraGrid = (d, h, gridData) => {
@@ -126,6 +164,14 @@
 
             const sletTrae = (id) => {
                 setTrees(trees.filter(t => t.id !== id));
+            };
+
+            const rydAlt = () => {
+                setTrees([]);
+                setRadius("");
+                setAreal("");
+                setValgtTræIndeks(7);
+                setVisRydBekræft(false);
             };
 
             // --- Hovedberegning (Opdateret til individuel formtalsberegning) ---
@@ -221,6 +267,95 @@
                     v_g
                 });
             }, [trees, radius, valgtTræIndeks, areal]);
+
+            // --- Eksport & Deling ---
+            const genererResumeTekst = () => {
+                let tekst = `Skovtaksation: ${TRAEARTER[valgtTræIndeks].navn}
+Areal: ${areal || 0} ha (Prøveflade r=${radius || 0}m)
+----------------
+Målt: ${trees.length} træ(er)
+Stamtal: ${Math.round(resultater.stamtalPrHa)} stk/ha
+Grundflade (G): ${resultater.G_ha.toFixed(1)} m²/ha
+Dg: ${resultater.Dg.toFixed(1)} cm
+Loreys Højde: ${resultater.loreysH.toFixed(1)} m
+Middeltræ (Vg): ${resultater.v_g.toFixed(2)} m³
+----------------
+Volumen: ${resultater.volumenHa.toFixed(1)} m³/ha
+Total Volumen: ${resultater.volumenTotal.toFixed(1)} m³
+----------------
+MÅLTE TRÆER (Dia. / Højde):
+`;
+                // Tilføjer alle rå opmålinger til teksten
+                [...trees].reverse().forEach((t, index) => {
+                    tekst += `#${trees.length - index}: ${t.d} cm / ${t.h} m\n`;
+                });
+                
+                return tekst;
+            };
+
+            const kopierTilUdklipsholder = () => {
+                const text = genererResumeTekst();
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed"; 
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    setKopieret(true);
+                    setTimeout(() => setKopieret(false), 2000);
+                } catch (err) {
+                    console.error('Kunne ikke kopiere tekst', err);
+                }
+                document.body.removeChild(textArea);
+            };
+
+            const delResultat = async () => {
+                const text = genererResumeTekst();
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Skovtaksation Resultat',
+                            text: text,
+                        });
+                    } catch (err) {
+                        console.log('Deling afbrudt', err);
+                    }
+                } else {
+                    kopierTilUdklipsholder();
+                }
+            };
+
+            const downloadCSV = () => {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "BESTANDSDATA\n";
+                csvContent += `Traeart,${TRAEARTER[valgtTræIndeks].navn}\n`;
+                csvContent += `Radius (m),${radius}\n`;
+                csvContent += `Areal (ha),${areal}\n`;
+                csvContent += `Stamtal (stk/ha),${Math.round(resultater.stamtalPrHa)}\n`;
+                csvContent += `Grundflade (m2/ha),${resultater.G_ha.toFixed(2)}\n`;
+                csvContent += `Dg (cm),${resultater.Dg.toFixed(2)}\n`;
+                csvContent += `Loreys Hoejde (m),${resultater.loreysH.toFixed(2)}\n`;
+                csvContent += `Middelstrae (m3),${resultater.v_g.toFixed(3)}\n`;
+                csvContent += `Volumen (m3/ha),${resultater.volumenHa.toFixed(2)}\n`;
+                csvContent += `Total Volumen (m3),${resultater.volumenTotal.toFixed(2)}\n\n`;
+                
+                csvContent += "MAALTE TRAEER\n";
+                csvContent += "Trae Nr,Diameter (cm),Hoejde (m)\n";
+                [...trees].reverse().forEach((t, index) => {
+                    csvContent += `${trees.length - index},${t.d},${t.h}\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `skovtaksation_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
 
             return (
                 <div className="min-h-screen p-4 md:p-8 flex justify-center">
@@ -403,6 +538,40 @@
                                         </div>
                                     </div>
 
+                                    {/* Eksport & Værktøjer */}
+                                    <div className="pt-4 border-t border-stone-600 mt-6 space-y-3">
+                                        <div className="flex gap-2">
+                                            <button onClick={kopierTilUdklipsholder} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                {kopieret ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                                                {kopieret ? "Kopieret!" : "Kopiér tekst"}
+                                            </button>
+                                            <button onClick={delResultat} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                <Share2 className="w-4 h-4" /> Del resultat
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={downloadCSV} className="flex-1 bg-green-700 hover:bg-green-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                <Download className="w-4 h-4" /> Download til Excel
+                                            </button>
+                                            
+                                            {visRydBekræft ? (
+                                                <div className="flex-1 flex gap-1">
+                                                    <button onClick={rydAlt} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-2 rounded-lg text-sm font-bold transition-colors">
+                                                        Slet alt!
+                                                    </button>
+                                                    <button onClick={() => setVisRydBekræft(false)} className="flex-1 bg-stone-600 hover:bg-stone-500 text-white p-2 rounded-lg text-sm transition-colors">
+                                                        Fortryd
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => setVisRydBekræft(true)} className="flex-1 bg-stone-800 hover:bg-red-900/50 text-red-400 border border-stone-600 p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                    <RefreshCw className="w-4 h-4" /> Ryd data
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-stone-500 text-center uppercase tracking-widest pt-2">Data gemmes automatisk på enheden</p>
+                                    </div>
+
                                 </div>
                             </div>
 
@@ -414,6 +583,17 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<SkovBeregner />);
+
+        // --- PWA Service Worker Registrering (Til Offline Brug) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(registration => {
+                    console.log('App er klar til offline brug!');
+                }).catch(err => {
+                    console.log('ServiceWorker fejl:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
