@@ -28,15 +28,16 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- IKONER ---
         const TreePine = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.9-1.5l2.9-4H8.7a1 1 0 0 1-.9-1.5l2.9-4c.5-.7 1.6-.7 2.1 0l2.9 4a1 1 0 0 1-.9 1.5H15l2.9 4a1 1 0 0 1-.9 1.5H17Z"/><path d="M12 22v-3"/></svg>;
         const Calculator = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>;
         const CircleDashed = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/></svg>;
-        const Ruler = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>;
-        const Leaf = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>;
-        const FileSpreadsheet = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a1 1 0 0 0 1 1h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>;
+        const ListTree = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M12 19c0-4.2-2.7-7.6-6-8.5"/><path d="M12 19V5"/><path d="M6 19v-4.5"/><path d="M9 19v-2.5"/></svg>;
+        const Activity = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
+        const Plus = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const Trash2 = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
 
         // --- DATA ---
         const FORMTAL_GRIDS = {
@@ -54,39 +55,35 @@
         };
 
         const TRAEARTER = [
-            { navn: 'Ask', standardFormtal: 0.59, metode: 'avanceret' },
-            { navn: 'Bøg', standardFormtal: 0.58, metode: 'avanceret' }, 
-            { navn: 'Douglasgran', standardFormtal: 0.50, metode: 'avanceret' },
-            { navn: 'Eg', standardFormtal: 0.62, metode: 'avanceret' },
-            { navn: 'Japansk Lærk', standardFormtal: 0.46, metode: 'avanceret' }, 
-            { navn: 'Kæmpegran', standardFormtal: 0.48, metode: 'avanceret' },
-            { navn: 'Nobilis', standardFormtal: 0.50, metode: 'avanceret' },
-            { navn: 'Rødgran', standardFormtal: 0.52, metode: 'avanceret' }, 
-            { navn: 'Sitkagran', standardFormtal: 0.48, metode: 'avanceret' },
-            { navn: 'Thuja', standardFormtal: 0.50, metode: 'avanceret' }, 
-            { navn: 'Ædelgran', standardFormtal: 0.54, metode: 'avanceret' }, 
+            { navn: 'Ask', standardFormtal: 0.59 },
+            { navn: 'Bøg', standardFormtal: 0.58 }, 
+            { navn: 'Douglasgran', standardFormtal: 0.50 },
+            { navn: 'Eg', standardFormtal: 0.62 },
+            { navn: 'Japansk Lærk', standardFormtal: 0.46 }, 
+            { navn: 'Kæmpegran', standardFormtal: 0.48 },
+            { navn: 'Nobilis', standardFormtal: 0.50 },
+            { navn: 'Rødgran', standardFormtal: 0.52 }, 
+            { navn: 'Sitkagran', standardFormtal: 0.48 },
+            { navn: 'Thuja', standardFormtal: 0.50 }, 
+            { navn: 'Ædelgran', standardFormtal: 0.54 }, 
         ];
 
         function SkovBeregner() {
-            const [radius, setRadius] = useState(''); 
-            const [antalTræerIPrøve, setAntalTræerIPrøve] = useState(''); 
+            // --- Input State ---
+            const [radius, setRadius] = useState(""); 
+            const [areal, setAreal] = useState(""); 
+            const [valgtTræIndeks, setValgtTræIndeks] = useState(7); // Default til 7 = Rødgran
 
-            const [diameter, setDiameter] = useState(''); 
-            const [højde, setHøjde] = useState(''); 
+            // Træ-liste state (Tom fra start)
+            const [trees, setTrees] = useState([]);
             
-            const [valgtTræIndeks, setValgtTræIndeks] = useState(0);
-            const [areal, setAreal] = useState(''); 
+            // State til indtastningsfeltet
+            const [nyDiameter, setNyDiameter] = useState("");
+            const [nyHoejde, setNyHoejde] = useState(""); 
+            
+            const dInputRef = useRef(null); 
 
-            const [resultater, setResultater] = useState({
-                stamtalPrHa: 0,
-                grundfladeEnkelt: 0,
-                grundfladeTotal: 0,
-                volumenEnkelt: 0,
-                volumenHa: 0,
-                volumenTotal: 0
-            });
-
-            // Beregningsmotor
+            // --- Interpolation: Udregner det præcise formtal ud fra D og H ---
             const beregnFormtalFraGrid = (d, h, gridData) => {
                 const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
                 const minD = gridData.diametre[0];
@@ -113,51 +110,121 @@
                 return R1 + y_factor * (R2 - R1);
             };
 
-            const hentAktueltFormtal = () => {
-                const art = TRAEARTER[valgtTræIndeks];
-                const grid = FORMTAL_GRIDS[art.navn];
-                const dVal = parseFloat(diameter) || 0;
-                const hVal = parseFloat(højde) || 0;
-                if (grid) {
-                    const f = beregnFormtalFraGrid(dVal, hVal, grid);
-                    return { værdi: f, kilde: 'Smart-Model (D/H)' };
+            // Tilføj træ funktion
+            const tilfoejTrae = (e) => {
+                e.preventDefault();
+                if (nyDiameter > 0 && nyHoejde > 0) {
+                    setTrees([...trees, { 
+                        id: Date.now(), 
+                        d: parseFloat(nyDiameter), 
+                        h: parseFloat(nyHoejde) 
+                    }]);
+                    setNyDiameter(""); 
+                    dInputRef.current?.focus(); 
                 }
-                return { værdi: 0.5, kilde: 'Standard' };
             };
 
-            const formtalData = hentAktueltFormtal();
-            const formtal = formtalData.værdi;
+            const sletTrae = (id) => {
+                setTrees(trees.filter(t => t.id !== id));
+            };
+
+            // --- Hovedberegning (Opdateret til individuel formtalsberegning) ---
+            const [resultater, setResultater] = useState({
+                stamtalPrHa: 0,
+                G_ha: 0,
+                Dg: 0,
+                HD_forhold: 0,
+                volumenHa: 0,
+                volumenTotal: 0,
+                gnsFormtal: 0,
+                loreysH: 0,
+                v_g: 0
+            });
 
             useEffect(() => {
-                const rVal = parseFloat(radius) || 0;
-                const antalVal = parseFloat(antalTræerIPrøve) || 0;
-                const dVal = parseFloat(diameter) || 0;
-                const hVal = parseFloat(højde) || 0;
-                const aVal = parseFloat(areal) || 0;
+                const N_plot = trees.length;
+                const radNum = parseFloat(radius);
+                const arealNum = parseFloat(areal) || 0;
+                
+                if (N_plot === 0 || !radNum || radNum <= 0) {
+                    setResultater({ stamtalPrHa: 0, G_ha: 0, Dg: 0, HD_forhold: 0, volumenHa: 0, volumenTotal: 0, gnsFormtal: 0, loreysH: 0, v_g: 0 });
+                    return;
+                }
 
-                const prøveArealM2 = Math.PI * Math.pow(rVal, 2);
-                const opgangningsFaktor = prøveArealM2 > 0 ? 10000 / prøveArealM2 : 0;
-                const beregnetStamtal = antalVal * opgangningsFaktor;
+                const prøveArealM2 = Math.PI * Math.pow(radNum, 2);
+                const opgangningsFaktor = 10000 / prøveArealM2;
+                const stamtalPrHa = N_plot * opgangningsFaktor;
 
-                const radiusM = (dVal / 100) / 2;
-                const g = Math.PI * Math.pow(radiusM, 2);
+                const valgtArt = TRAEARTER[valgtTræIndeks];
+                const gridData = FORMTAL_GRIDS[valgtArt.navn];
 
-                const G = g * beregnetStamtal;
-                const v = g * hVal * formtal;
-                const V_ha = v * beregnetStamtal;
-                const V_total = V_ha * aVal;
+                let g_sum = 0;
+                let v_sum = 0;
+                let hd_sum = 0;
+                let gh_sum = 0;
 
-                setResultater({ stamtalPrHa: beregnetStamtal, grundfladeEnkelt: g, grundfladeTotal: G, volumenEnkelt: v, volumenHa: V_ha, volumenTotal: V_total });
-            }, [diameter, højde, radius, antalTræerIPrøve, formtal, areal]);
+                // Løb igennem HVERT træ
+                trees.forEach(tree => {
+                    // 1. Grundflade (m2)
+                    const radiusM = (tree.d / 100) / 2;
+                    const g_i = Math.PI * Math.pow(radiusM, 2);
+                    
+                    // 2. Find det PRÆCISE formtal til dette specifikke træ
+                    let f_i = valgtArt.standardFormtal;
+                    if (gridData) {
+                        f_i = beregnFormtalFraGrid(tree.d, tree.h, gridData);
+                    }
 
-            const handleInputChange = (setter) => (e) => {
-                const val = e.target.value;
-                if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setter(val);
-            };
+                    // 3. Beregn volumen
+                    const v_i = g_i * tree.h * f_i;
+
+                    // 4. H/D forhold
+                    const hd_i = (tree.h * 100) / tree.d;
+
+                    g_sum += g_i;
+                    v_sum += v_i;
+                    hd_sum += hd_i;
+                    gh_sum += (g_i * tree.h);
+                });
+
+                // Skaler op til Hektar
+                const G_ha = g_sum * opgangningsFaktor;
+                const V_ha = v_sum * opgangningsFaktor;
+                const V_total = V_ha * arealNum;
+
+                // Beregn Dg (Grundflademiddeldiameter)
+                const g_mean = g_sum / N_plot; 
+                const Dg_meter = Math.sqrt(g_mean / Math.PI) * 2; 
+                const Dg = Dg_meter * 100; 
+
+                const HD_mean = hd_sum / N_plot;
+
+                // Beregn Loreys Middelhøjde (vægtet med grundflade)
+                const loreysH = g_sum > 0 ? gh_sum / g_sum : 0;
+                
+                // Beregn Middelstammens volumen (gennemsnitligt volumen pr. træ)
+                const v_g = v_sum / N_plot;
+
+                // Beregn et gennemsnitligt "synligt" formtal for brugerens skyld (Volumen divideret med Cylinder)
+                const h_mean = trees.reduce((acc, t) => acc + t.h, 0) / N_plot;
+                const gnsFormtal = v_sum / (g_sum * h_mean);
+
+                setResultater({
+                    stamtalPrHa,
+                    G_ha,
+                    Dg,
+                    HD_forhold: HD_mean,
+                    volumenHa: V_ha,
+                    volumenTotal: V_total,
+                    gnsFormtal: gnsFormtal || 0,
+                    loreysH,
+                    v_g
+                });
+            }, [trees, radius, valgtTræIndeks, areal]);
 
             return (
                 <div className="min-h-screen p-4 md:p-8 flex justify-center">
-                    <div className="w-full max-w-3xl bg-white rounded-xl shadow-xl overflow-hidden border border-stone-200">
+                    <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl overflow-hidden border border-stone-200">
                         {/* Header */}
                         <div className="bg-green-800 p-6 text-white flex items-center justify-between">
                             <div>
@@ -165,102 +232,180 @@
                                     <TreePine className="w-8 h-8" />
                                     Vedmasseberegner
                                 </h1>
+                                <p className="text-green-100 text-sm mt-1">Prøvefladetaksation</p>
                             </div>
-                            <Calculator className="w-8 h-8 opacity-50" />
+                            <Calculator className="w-8 h-8 opacity-50 hidden sm:block" />
                         </div>
 
-                        <div className="p-6 grid gap-8">
-                            {/* INPUT SEKTION */}
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-semibold border-b pb-2 border-stone-200 flex items-center gap-2 text-green-900">
-                                    <CircleDashed className="w-5 h-5" />
-                                    Prøveflade
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-green-50 p-4 rounded-lg border border-green-100">
-                                    <div className="flex flex-col">
-                                        <label className="text-xs font-bold uppercase text-green-800 mb-1">Prøveflade Radius (m)</label>
-                                        <input type="text" inputMode="decimal" value={radius} onChange={handleInputChange(setRadius)} className="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white shadow-sm" placeholder="F.eks. 10" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-xs font-bold uppercase text-green-800 mb-1">Antal træer i cirklen</label>
-                                        <input type="text" inputMode="numeric" value={antalTræerIPrøve} onChange={handleInputChange(setAntalTræerIPrøve)} className="p-3 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white shadow-sm" placeholder="Tæl træerne..." />
-                                        <p className="text-xs text-green-600 mt-1 text-right">Stamtal: <span className="font-bold">{Math.round(resultater.stamtalPrHa)}</span> stk/ha</p>
-                                    </div>
-                                    <div className="flex flex-col md:col-span-2">
-                                        <label className="text-sm font-medium text-stone-600 mb-1">Træart</label>
-                                        <div className="relative">
-                                            <select value={valgtTræIndeks} onChange={(e) => setValgtTræIndeks(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white cursor-pointer appearance-none focus:ring-2 focus:ring-green-500 outline-none">
-                                                {TRAEARTER.map((træ, index) => <option key={index} value={index}>{træ.navn}</option>)}
+                        <div className="p-6 grid lg:grid-cols-2 gap-8">
+                            
+                            {/* VENSTRE KOLONNE: Indstillinger & Indtastning */}
+                            <div className="space-y-8">
+                                
+                                {/* Sektion 1: Område */}
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-semibold border-b pb-2 border-stone-200 flex items-center gap-2 text-green-900">
+                                        <CircleDashed className="w-5 h-5" />
+                                        Område & Bestand
+                                    </h2>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex flex-col col-span-2 sm:col-span-1">
+                                            <label className="text-xs font-bold uppercase text-green-800 mb-1">Prøveflade Radius (m)</label>
+                                            <input type="number" step="0.1" value={radius} onChange={(e) => setRadius(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none" placeholder="F.eks. 15" />
+                                        </div>
+                                        <div className="flex flex-col col-span-2 sm:col-span-1">
+                                            <label className="text-xs font-bold uppercase text-green-800 mb-1">Totalt Areal (ha)</label>
+                                            <input type="number" step="0.1" value={areal} onChange={(e) => setAreal(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none" placeholder="F.eks. 1.5" />
+                                        </div>
+                                        <div className="flex flex-col col-span-2">
+                                            <label className="text-xs font-medium text-stone-600 mb-1">Træart</label>
+                                            <select value={valgtTræIndeks} onChange={(e) => setValgtTræIndeks(Number(e.target.value))} className="p-2 border border-stone-300 rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none">
+                                                {TRAEARTER.map((træ, idx) => <option key={idx} value={idx}>{træ.navn}</option>)}
                                             </select>
-                                            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-stone-500">
-                                                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
-                                            </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Sektion 2: Træliste */}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end border-b pb-2 border-stone-200">
+                                        <h2 className="text-lg font-semibold flex items-center gap-2 text-stone-800">
+                                            <ListTree className="w-5 h-5 text-green-700" />
+                                            Målte Træer ({trees.length})
+                                        </h2>
+                                    </div>
+
+                                    {/* Hurtig indtastning */}
+                                    <form onSubmit={tilfoejTrae} className="flex gap-2 items-end bg-green-50 p-3 rounded-lg border border-green-200 shadow-sm">
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-green-900 mb-1 block">Diameter (cm)</label>
+                                            <input 
+                                                ref={dInputRef}
+                                                type="number" 
+                                                step="0.1"
+                                                value={nyDiameter} 
+                                                onChange={(e) => setNyDiameter(e.target.value)} 
+                                                placeholder="D"
+                                                className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-green-900 mb-1 block">Højde (m)</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.1"
+                                                value={nyHoejde} 
+                                                onChange={(e) => setNyHoejde(e.target.value)} 
+                                                placeholder="H"
+                                                className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                            />
+                                        </div>
+                                        <button type="submit" disabled={!nyDiameter || !nyHoejde} className="bg-green-700 text-white p-2 rounded hover:bg-green-800 disabled:opacity-50 transition-colors h-[42px] px-4 flex items-center gap-1">
+                                            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Tilføj</span>
+                                        </button>
+                                    </form>
+
+                                    {/* Listen med træer */}
+                                    <div className="bg-stone-50 border rounded-lg max-h-64 overflow-y-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-stone-200 sticky top-0">
+                                                <tr>
+                                                    <th className="p-2 font-medium text-stone-600">#</th>
+                                                    <th className="p-2 font-medium text-stone-600">Diameter</th>
+                                                    <th className="p-2 font-medium text-stone-600">Højde</th>
+                                                    <th className="p-2 font-medium text-stone-600 text-right">Slet</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {trees.length === 0 ? (
+                                                    <tr><td colSpan="4" className="text-center p-4 text-stone-400 italic">Begynd at taste træer ovenfor for at starte.</td></tr>
+                                                ) : (
+                                                    trees.reverse().map((t, index) => (
+                                                        <tr key={t.id} className="border-b border-stone-100 last:border-0 hover:bg-white">
+                                                            <td className="p-2 text-stone-400">{trees.length - index}</td>
+                                                            <td className="p-2 font-semibold">{t.d} cm</td>
+                                                            <td className="p-2 text-stone-600">{t.h} m</td>
+                                                            <td className="p-2 text-right">
+                                                                <button onClick={() => sletTrae(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded inline-flex justify-center w-full">
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-semibold border-b pb-2 border-stone-200 flex items-center gap-2">
-                                    <Ruler className="w-5 h-5 text-stone-600" />
-                                    Målinger
+                            {/* HØJRE KOLONNE: Resultater */}
+                            <div className="bg-stone-800 text-stone-100 rounded-xl p-6 shadow-xl h-fit sticky top-8 border border-stone-600">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-green-400 border-b border-stone-600 pb-3">
+                                    <Activity className="w-6 h-6" />
+                                    Bestandsdata & Vedmasse
                                 </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="flex flex-col">
-                                        <label className="text-sm font-medium text-stone-600 mb-1 h-10 flex items-end pb-1">Diameter v. 1,3 m (cm)</label>
-                                        <input type="text" inputMode="decimal" value={diameter} onChange={handleInputChange(setDiameter)} className="p-3 border rounded-lg bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="Gennemsnit" />
+                                
+                                <div className="space-y-6">
+                                    
+                                    {/* Nøgletal Grid */}
+                                    <div className="grid grid-cols-2 gap-4 bg-stone-700/50 p-4 rounded-lg">
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade.Mid.Dia (Dg)</p>
+                                            <p className="text-2xl font-bold text-white">{resultater.Dg.toFixed(1)} <span className="text-sm font-normal text-stone-400">cm</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Loreys Middelhøjde">Loreys Højde (HL)</p>
+                                            <p className="text-2xl font-bold text-white">{resultater.loreysH.toFixed(1)} <span className="text-sm font-normal text-stone-400">m</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade (G)</p>
+                                            <p className="text-2xl font-bold text-white">{resultater.G_ha.toFixed(1)} <span className="text-sm font-normal text-stone-400">m²/ha</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Stamtal (N)</p>
+                                            <p className="text-2xl font-bold text-white">{Math.round(resultater.stamtalPrHa)} <span className="text-sm font-normal text-stone-400">stk/ha</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Middelstammens volumen">Middeltræ (Vg)</p>
+                                            <p className="text-2xl font-bold text-white">{resultater.v_g.toFixed(1)} <span className="text-sm font-normal text-stone-400">m³</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Højde/Diameter Forhold">H/D Forhold</p>
+                                            <p className={`text-2xl font-bold ${resultater.HD_forhold > 80 ? 'text-orange-400' : 'text-green-300'}`}>
+                                                {resultater.HD_forhold.toFixed(1)}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-sm font-medium text-stone-600 mb-1 h-10 flex items-end pb-1">Træhøjde (m)</label>
-                                        <input type="text" inputMode="decimal" value={højde} onChange={handleInputChange(setHøjde)} className="p-3 border rounded-lg bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="Gennemsnit" />
+
+                                    {/* Formtal info */}
+                                    <div className="flex justify-between items-center text-sm bg-stone-900/50 p-3 rounded">
+                                        <span className="text-stone-400">
+                                            Gns. formtal:
+                                        </span>
+                                        <span className="font-mono text-yellow-400">{resultater.gnsFormtal.toFixed(3)}</span>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-sm font-medium text-stone-600 mb-1 h-10 flex items-end pb-1">Areal (ha)</label>
-                                        <input type="text" inputMode="decimal" value={areal} onChange={handleInputChange(setAreal)} className="p-3 border rounded-lg bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="Total" />
+
+                                    <div className="h-px bg-stone-600 w-full"></div>
+
+                                    {/* Hovedresultater */}
+                                    <div className="flex flex-col gap-4">
+                                        <div className="text-center">
+                                            <p className="text-stone-400 text-sm uppercase tracking-widest mb-1">Volumen pr. Hektar</p>
+                                            <p className="text-4xl font-black text-white">{resultater.volumenHa.toFixed(1)} m³</p>
+                                        </div>
+                                        
+                                        <div className="text-center bg-green-900/40 border border-green-800/50 p-4 rounded-xl mt-2">
+                                            <p className="text-green-300/80 text-xs uppercase tracking-widest mb-1">Total Volumen for {areal || 0} ha</p>
+                                            <p className="text-5xl font-black text-green-400 drop-shadow-md">{resultater.volumenTotal.toFixed(1)} m³</p>
+                                        </div>
                                     </div>
+
                                 </div>
                             </div>
 
-                            {/* RESULTAT SEKTION */}
-                            <div className="bg-stone-800 text-stone-100 rounded-xl p-6 border border-stone-600 shadow-xl">
-                                <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-green-400">
-                                    <Leaf className="w-5 h-5" />
-                                    Beregnet vedmasse
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex justify-between border-b border-stone-600 pb-1">
-                                            <span className="text-stone-400 flex items-center gap-2">
-                                                Formtal ({TRAEARTER[valgtTræIndeks].navn}):
-                                            </span>
-                                            <span className="font-mono text-yellow-400">{formtal.toFixed(4)}</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-stone-600 pb-1">
-                                            <span className="text-stone-400">Middelstammens grundflade (g):</span>
-                                            <span>{resultater.grundfladeEnkelt.toFixed(4)} m²</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-stone-600 pb-1">
-                                            <span className="text-stone-400">Middelstammens volumen (v):</span>
-                                            <span>{resultater.volumenEnkelt.toFixed(3)} m³</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-stone-600 pb-1">
-                                            <span className="text-stone-400">Grundflade pr. ha (G):</span>
-                                            <span className="text-green-300 font-bold">{resultater.grundfladeTotal.toFixed(2)} m²/ha</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-4 justify-center bg-stone-700/50 p-4 rounded-lg">
-                                        <div className="text-center">
-                                            <p className="text-stone-400 text-xs uppercase tracking-wide">Volumen pr. Hektar</p>
-                                            <p className="text-3xl font-bold text-white">{resultater.volumenHa.toFixed(1)} m³</p>
-                                        </div>
-                                        <div className="h-px bg-stone-600 w-full"></div>
-                                        <div className="text-center">
-                                            <p className="text-stone-400 text-xs uppercase tracking-wide">Total for {areal || 0} ha</p>
-                                            <p className="text-4xl font-bold text-green-400">{resultater.volumenTotal.toFixed(1)} m³</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
