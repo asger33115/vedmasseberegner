@@ -50,6 +50,9 @@
         const Copy = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
         const Check = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
         const RefreshCw = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const Save = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+        const FolderOpen = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>;
+        const XIcon = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 
         // --- DATA ---
         const FORMTAL_GRIDS = {
@@ -107,6 +110,9 @@
             // Træ-liste state
             const [trees, setTrees] = useState(() => getSavedState('skov_trees', []));
             
+            // Gemte Prøveflader State
+            const [savedPlots, setSavedPlots] = useState(() => getSavedState('skov_saved_plots', []));
+            
             // State til indtastningsfeltet (gemmes ikke lokalt)
             const [nyDiameter, setNyDiameter] = useState("");
             const [nyHoejde, setNyHoejde] = useState(""); 
@@ -115,6 +121,18 @@
             const [kopieret, setKopieret] = useState(false);
             const [visRydBekræft, setVisRydBekræft] = useState(false);
             
+            // Modals State
+            const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+            const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+            const [saveMode, setSaveMode] = useState('structured'); // 'structured' or 'custom'
+            
+            // Gem Data Formfelter
+            const [saveSkov, setSaveSkov] = useState("");
+            const [saveAfdeling, setSaveAfdeling] = useState("");
+            const [saveLitra, setSaveLitra] = useState("");
+            const [saveAarstal, setSaveAarstal] = useState("");
+            const [saveCustomName, setSaveCustomName] = useState("");
+
             const dInputRef = useRef(null); 
 
             // --- Gem til lokal hukommelse hver gang noget ændres ---
@@ -124,10 +142,11 @@
                     localStorage.setItem('skov_areal', JSON.stringify(areal));
                     localStorage.setItem('skov_art', JSON.stringify(valgtTræIndeks));
                     localStorage.setItem('skov_trees', JSON.stringify(trees));
+                    localStorage.setItem('skov_saved_plots', JSON.stringify(savedPlots));
                 } catch (e) {
                     console.warn("Kunne ikke gemme data lokalt.");
                 }
-            }, [radius, areal, valgtTræIndeks, trees]);
+            }, [radius, areal, valgtTræIndeks, trees, savedPlots]);
 
             // --- Interpolation: Udregner det præcise formtal ud fra D og H ---
             const beregnFormtalFraGrid = (d, h, gridData) => {
@@ -184,6 +203,56 @@
                 setAreal("");
                 setValgtTræIndeks(7);
                 setVisRydBekræft(false);
+            };
+
+            // --- Gem og Hent Prøveflader Funktioner ---
+            const handleSavePlot = () => {
+                let plotName = "";
+                if (saveMode === 'structured') {
+                    const artNavn = TRAEARTER[valgtTræIndeks].navn;
+                    const parts = [];
+                    
+                    if (saveAarstal) {
+                        const currentYear = new Date().getFullYear();
+                        const aarstal = parseInt(saveAarstal);
+                        if (!isNaN(aarstal)) {
+                            const alder = currentYear - aarstal;
+                            parts.push(`${aarstal} (${alder} år)`);
+                        }
+                    }
+                    if (saveLitra) parts.push(`Litra ${saveLitra}`);
+                    if (saveAfdeling) parts.push(`afd. ${saveAfdeling}`);
+                    if (saveSkov) parts.push(`${saveSkov}`);
+                    
+                    plotName = `${artNavn}` + (parts.length > 0 ? `, ${parts.join(', ')}` : '');
+                } else {
+                    plotName = saveCustomName.trim() || 'Unavngivet prøveflade';
+                }
+
+                const newPlot = {
+                    id: Date.now(),
+                    name: plotName,
+                    date: new Date().toLocaleDateString('da-DK'),
+                    data: { radius, areal, valgtTræIndeks, trees }
+                };
+
+                setSavedPlots([...savedPlots, newPlot]);
+                setIsSaveModalOpen(false);
+                
+                // Nulstil form felter
+                setSaveSkov(""); setSaveAfdeling(""); setSaveLitra(""); setSaveAarstal(""); setSaveCustomName("");
+            };
+
+            const loadPlot = (plot) => {
+                setRadius(plot.data.radius);
+                setAreal(plot.data.areal);
+                setValgtTræIndeks(plot.data.valgtTræIndeks);
+                setTrees(plot.data.trees);
+                setIsLoadModalOpen(false);
+            };
+
+            const deletePlot = (id) => {
+                setSavedPlots(savedPlots.filter(p => p.id !== id));
             };
 
             // --- Hovedberegning ---
@@ -361,7 +430,7 @@
             };
 
             return (
-                <div className="min-h-screen p-4 md:p-8 flex justify-center">
+                <div className="min-h-screen p-4 md:p-8 flex justify-center relative">
                     <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl overflow-hidden border border-stone-200">
                         {/* Header */}
                         <div className="bg-green-800 p-6 text-white flex items-center justify-between">
@@ -541,22 +610,31 @@
                                         </div>
                                     </div>
 
-                                    {/* Eksport & Værktøjer */}
+                                    {/* Håndtering af Prøveflader */}
                                     <div className="pt-4 border-t border-stone-600 mt-6 space-y-3">
                                         <div className="flex gap-2">
-                                            <button onClick={kopierTilUdklipsholder} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
-                                                {kopieret ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                {kopieret ? "Kopieret!" : "Kopiér tekst"}
+                                            <button onClick={() => setIsSaveModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-500">
+                                                <Save className="w-4 h-4 text-green-400" /> Gem prøveflade
                                             </button>
-                                            <button onClick={delResultat} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
-                                                <Share2 className="w-4 h-4" /> Del resultat
+                                            <button onClick={() => setIsLoadModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-500">
+                                                <FolderOpen className="w-4 h-4 text-yellow-400" /> Åbn gemte
                                             </button>
                                         </div>
+
+                                        {/* Eksport & Værktøjer */}
                                         <div className="flex gap-2">
-                                            <button onClick={downloadCSV} className="flex-1 bg-green-700 hover:bg-green-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
-                                                <Download className="w-4 h-4" /> Download til Excel
+                                            <button onClick={kopierTilUdklipsholder} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
+                                                {kopieret ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                             </button>
-                                            
+                                            <button onClick={delResultat} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
+                                                <Share2 className="w-4 h-4" /> 
+                                            </button>
+                                            <button onClick={downloadCSV} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
+                                                <Download className="w-4 h-4" /> 
+                                            </button>
+                                        </div>
+
+                                        <div className="flex gap-2">
                                             {visRydBekræft ? (
                                                 <div className="flex-1 flex gap-1">
                                                     <button onClick={rydAlt} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-2 rounded-lg text-sm font-bold transition-colors">
@@ -567,8 +645,8 @@
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <button onClick={() => setVisRydBekræft(true)} className="flex-1 bg-stone-800 hover:bg-red-900/50 text-red-400 border border-stone-600 p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
-                                                    <RefreshCw className="w-4 h-4" /> Ryd data
+                                                <button onClick={() => setVisRydBekræft(true)} className="flex-1 bg-stone-800 hover:bg-red-900/50 text-red-400 border border-stone-700 p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                    <RefreshCw className="w-4 h-4" /> Nulstil nuværende
                                                 </button>
                                             )}
                                         </div>
@@ -580,6 +658,116 @@
 
                         </div>
                     </div>
+
+                    {/* MODAL: Gem Prøveflade */}
+                    {isSaveModalOpen && (
+                        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
+                                        <Save className="w-5 h-5" /> Gem Prøveflade
+                                    </h3>
+                                    <button onClick={() => setIsSaveModalOpen(false)} className="text-stone-400 hover:text-stone-700">
+                                        <XIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Menu-tabs */}
+                                <div className="flex gap-2 mb-4 bg-stone-100 p-1 rounded-lg">
+                                    <button 
+                                        className={`flex-1 p-2 rounded-md text-sm transition-colors ${saveMode === 'structured' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500 hover:text-stone-800'}`} 
+                                        onClick={() => setSaveMode('structured')}
+                                    >
+                                        Standard navngivning
+                                    </button>
+                                    <button 
+                                        className={`flex-1 p-2 rounded-md text-sm transition-colors ${saveMode === 'custom' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500 hover:text-stone-800'}`} 
+                                        onClick={() => setSaveMode('custom')}
+                                    >
+                                        Vilkårligt navn
+                                    </button>
+                                </div>
+
+                                {saveMode === 'structured' ? (
+                                    <div className="space-y-3 mb-6">
+                                        <p className="text-xs text-stone-500 mb-2">Træart indsættes automatisk ({TRAEARTER[valgtTræIndeks].navn}). Udfyld de felter du har brug for:</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="flex flex-col">
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Årstal</label>
+                                                <input type="number" value={saveAarstal} onChange={(e) => setSaveAarstal(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Litra</label>
+                                                <input type="text" value={saveLitra} onChange={(e) => setSaveLitra(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Afdeling</label>
+                                                <input type="text" value={saveAfdeling} onChange={(e) => setSaveAfdeling(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
+                                            </div>
+                                            <div className="flex flex-col col-span-2">
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Skov</label>
+                                                <input type="text" value={saveSkov} onChange={(e) => setSaveSkov(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex flex-col">
+                                            <label className="text-xs font-bold uppercase text-stone-600 mb-1">Navn på prøveflade</label>
+                                            <input type="text" value={saveCustomName} onChange={(e) => setSaveCustomName(e.target.value)} placeholder="Skriv dit eget navn..." className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button onClick={handleSavePlot} className="w-full bg-green-700 hover:bg-green-600 text-white font-bold p-3 rounded-lg flex justify-center items-center gap-2 transition-colors">
+                                    Gem nu
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: Åbn Gemte Prøveflader */}
+                    {isLoadModalOpen && (
+                        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
+                                        <FolderOpen className="w-5 h-5" /> Mine Prøveflader
+                                    </h3>
+                                    <button onClick={() => setIsLoadModalOpen(false)} className="text-stone-400 hover:text-stone-700">
+                                        <XIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="max-h-80 overflow-y-auto space-y-2 mb-4">
+                                    {savedPlots.length === 0 ? (
+                                        <p className="text-center p-4 text-stone-500 italic">Du har ikke gemt nogen prøveflader endnu.</p>
+                                    ) : (
+                                        savedPlots.slice().reverse().map(plot => (
+                                            <div key={plot.id} className="border border-stone-200 p-3 rounded-lg flex flex-col gap-2 hover:bg-stone-50 transition-colors">
+                                                <div>
+                                                    <p className="font-semibold text-stone-800 text-sm leading-tight">{plot.name}</p>
+                                                    <p className="text-xs text-stone-500 mt-1">Gemt d. {plot.date} • {plot.data.trees.length} målte træer</p>
+                                                </div>
+                                                <div className="flex gap-2 mt-1">
+                                                    <button onClick={() => loadPlot(plot)} className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold p-2 rounded transition-colors">
+                                                        Åbn
+                                                    </button>
+                                                    <button onClick={() => deletePlot(plot.id)} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded transition-colors" title="Slet">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <button onClick={() => setIsLoadModalOpen(false)} className="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold p-3 rounded-lg transition-colors">
+                                    Luk
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
