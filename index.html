@@ -80,6 +80,14 @@
             { navn: 'Ædelgran', standardFormtal: 0.54 }, 
         ];
 
+        // --- Hjælpefunktion til dansk talformatering (komma i stedet for punktum) ---
+        const formatDK = (num, decimals = null) => {
+            if (num === null || num === undefined || num === '') return '';
+            const n = Number(num);
+            if (isNaN(n)) return num.toString().replace('.', ',');
+            return (decimals !== null ? n.toFixed(decimals) : n.toString()).replace('.', ',');
+        };
+
         function SkovBeregner() {
             // --- Funktion til at hente lokalt gemte data sikkert ---
             const getSavedState = (key, defaultValue) => {
@@ -151,11 +159,15 @@
             // Tilføj træ funktion
             const tilfoejTrae = (e) => {
                 e.preventDefault();
-                if (nyDiameter > 0 && nyHoejde > 0) {
+                // Tillad dansk komma ved konvertering (hvis indtastet som streng, fx 15,5 bliver 15.5 i JS)
+                const parsedD = parseFloat(nyDiameter.toString().replace(',', '.'));
+                const parsedH = parseFloat(nyHoejde.toString().replace(',', '.'));
+                
+                if (parsedD > 0 && parsedH > 0) {
                     setTrees([...trees, { 
                         id: Date.now(), 
-                        d: parseFloat(nyDiameter), 
-                        h: parseFloat(nyHoejde) 
+                        d: parsedD, 
+                        h: parsedH 
                     }]);
                     setNyDiameter(""); 
                     dInputRef.current?.focus(); 
@@ -189,8 +201,8 @@
 
             useEffect(() => {
                 const N_plot = trees.length;
-                const radNum = parseFloat(radius);
-                const arealNum = parseFloat(areal) || 0;
+                const radNum = parseFloat(radius.toString().replace(',', '.'));
+                const arealNum = parseFloat(areal.toString().replace(',', '.')) || 0;
                 
                 if (N_plot === 0 || !radNum || radNum <= 0) {
                     setResultater({ stamtalPrHa: 0, G_ha: 0, Dg: 0, HD_forhold: 0, volumenHa: 0, volumenTotal: 0, gnsFormtal: 0, loreysH: 0, v_g: 0 });
@@ -257,26 +269,25 @@
 
             // --- Eksport & Deling ---
             const genererResumeTekst = () => {
-                // Rent tekst layout uden emojis
                 let tekst = `SKOVTAKSATION: ${TRAEARTER[valgtTræIndeks].navn}\n`;
-                tekst += `Areal: ${areal || 0} ha  |  Prøveflade r=${radius || 0}m\n`;
+                tekst += `Areal: ${formatDK(areal)} ha  |  Prøveflade r=${formatDK(radius)}m\n`;
                 tekst += `--------------------------------\n`;
                 tekst += `NØGLETAL\n`;
                 tekst += `• Målte træer:    ${trees.length} stk\n`;
                 tekst += `• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n`;
-                tekst += `• Grundflade (G): ${resultater.G_ha.toFixed(1)} m²/ha\n`;
-                tekst += `• Dg:             ${resultater.Dg.toFixed(1)} cm\n`;
-                tekst += `• Loreys Højde:   ${resultater.loreysH.toFixed(1)} m\n`;
-                tekst += `• Middeltræ (Vg): ${resultater.v_g.toFixed(3)} m³\n`;
+                tekst += `• Grundflade (G): ${formatDK(resultater.G_ha, 1)} m²/ha\n`;
+                tekst += `• Dg:             ${formatDK(resultater.Dg, 1)} cm\n`;
+                tekst += `• Loreys Højde:   ${formatDK(resultater.loreysH, 1)} m\n`;
+                tekst += `• Middeltræ (Vg): ${formatDK(resultater.v_g, 3)} m³\n`;
                 tekst += `--------------------------------\n`;
                 tekst += `VEDMASSE\n`;
-                tekst += `• Pr. hektar:     ${resultater.volumenHa.toFixed(1)} m³/ha\n`;
-                tekst += `• Total volumen:  ${resultater.volumenTotal.toFixed(1)} m³\n`;
+                tekst += `• Pr. hektar:     ${formatDK(resultater.volumenHa, 1)} m³/ha\n`;
+                tekst += `• Total volumen:  ${formatDK(resultater.volumenTotal, 1)} m³\n`;
                 tekst += `--------------------------------\n`;
                 tekst += `MÅLTE TRÆER (Dia. / Højde):\n`;
                 
                 [...trees].reverse().forEach((t, index) => {
-                    tekst += `  #${trees.length - index}: ${t.d} cm / ${t.h} m\n`;
+                    tekst += `  #${trees.length - index}: ${formatDK(t.d)} cm / ${formatDK(t.h)} m\n`;
                 });
                 
                 return tekst;
@@ -322,20 +333,20 @@
                 
                 csvContent += "BESTANDSDATA\n";
                 csvContent += `Træart;${TRAEARTER[valgtTræIndeks].navn}\n`;
-                csvContent += `Radius (m);${radius}\n`;
-                csvContent += `Areal (ha);${areal}\n`;
+                csvContent += `Radius (m);${formatDK(radius)}\n`;
+                csvContent += `Areal (ha);${formatDK(areal)}\n`;
                 csvContent += `Stamtal (stk/ha);${Math.round(resultater.stamtalPrHa)}\n`;
-                csvContent += `Grundflade (m2/ha);${resultater.G_ha.toFixed(2)}\n`;
-                csvContent += `Dg (cm);${resultater.Dg.toFixed(2)}\n`;
-                csvContent += `Loreys Højde (m);${resultater.loreysH.toFixed(2)}\n`;
-                csvContent += `Middeltræ (m3);${resultater.v_g.toFixed(3)}\n`;
-                csvContent += `Volumen (m3/ha);${resultater.volumenHa.toFixed(2)}\n`;
-                csvContent += `Total Volumen (m3);${resultater.volumenTotal.toFixed(2)}\n\n`;
+                csvContent += `Grundflade (m2/ha);${formatDK(resultater.G_ha, 2)}\n`;
+                csvContent += `Dg (cm);${formatDK(resultater.Dg, 2)}\n`;
+                csvContent += `Loreys Højde (m);${formatDK(resultater.loreysH, 2)}\n`;
+                csvContent += `Middeltræ (m3);${formatDK(resultater.v_g, 3)}\n`;
+                csvContent += `Volumen (m3/ha);${formatDK(resultater.volumenHa, 2)}\n`;
+                csvContent += `Total Volumen (m3);${formatDK(resultater.volumenTotal, 2)}\n\n`;
                 
                 csvContent += "MÅLTE TRÆER\n";
                 csvContent += "Træ Nr;Diameter (cm);Højde (m)\n";
                 [...trees].reverse().forEach((t, index) => {
-                    csvContent += `${trees.length - index};${t.d};${t.h}\n`;
+                    csvContent += `${trees.length - index};${formatDK(t.d)};${formatDK(t.h)}\n`;
                 });
 
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -451,8 +462,8 @@
                                                     trees.reverse().map((t, index) => (
                                                         <tr key={t.id} className="border-b border-stone-100 last:border-0 hover:bg-white">
                                                             <td className="p-2 text-stone-400">{trees.length - index}</td>
-                                                            <td className="p-2 font-semibold">{t.d} cm</td>
-                                                            <td className="p-2 text-stone-600">{t.h} m</td>
+                                                            <td className="p-2 font-semibold">{formatDK(t.d)} cm</td>
+                                                            <td className="p-2 text-stone-600">{formatDK(t.h)} m</td>
                                                             <td className="p-2 text-right">
                                                                 <button onClick={() => sletTrae(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded inline-flex justify-center w-full">
                                                                     <Trash2 className="w-4 h-4" />
@@ -481,15 +492,15 @@
                                     <div className="grid grid-cols-2 gap-4 bg-stone-700/50 p-4 rounded-lg">
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade.Mid.Dia (Dg)</p>
-                                            <p className="text-2xl font-bold text-white">{resultater.Dg.toFixed(1)} <span className="text-sm font-normal text-stone-400">cm</span></p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.Dg, 1)} <span className="text-sm font-normal text-stone-400">cm</span></p>
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Loreys Middelhøjde">Loreys Højde (HL)</p>
-                                            <p className="text-2xl font-bold text-white">{resultater.loreysH.toFixed(1)} <span className="text-sm font-normal text-stone-400">m</span></p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.loreysH, 1)} <span className="text-sm font-normal text-stone-400">m</span></p>
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade (G)</p>
-                                            <p className="text-2xl font-bold text-white">{resultater.G_ha.toFixed(1)} <span className="text-sm font-normal text-stone-400">m²/ha</span></p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.G_ha, 1)} <span className="text-sm font-normal text-stone-400">m²/ha</span></p>
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Stamtal (N)</p>
@@ -497,12 +508,12 @@
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Middelstammens volumen">Middeltræ (Vg)</p>
-                                            <p className="text-2xl font-bold text-white">{resultater.v_g.toFixed(1)} <span className="text-sm font-normal text-stone-400">m³</span></p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.v_g, 1)} <span className="text-sm font-normal text-stone-400">m³</span></p>
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Højde/Diameter Forhold">H/D Forhold</p>
                                             <p className={`text-2xl font-bold ${resultater.HD_forhold > 80 ? 'text-orange-400' : 'text-green-300'}`}>
-                                                {resultater.HD_forhold.toFixed(1)}
+                                                {formatDK(resultater.HD_forhold, 1)}
                                             </p>
                                         </div>
                                     </div>
@@ -512,7 +523,7 @@
                                         <span className="text-stone-400">
                                             Gns. formtal:
                                         </span>
-                                        <span className="font-mono text-yellow-400">{resultater.gnsFormtal.toFixed(3)}</span>
+                                        <span className="font-mono text-yellow-400">{formatDK(resultater.gnsFormtal, 3)}</span>
                                     </div>
 
                                     <div className="h-px bg-stone-600 w-full"></div>
@@ -521,12 +532,12 @@
                                     <div className="flex flex-col gap-4">
                                         <div className="text-center">
                                             <p className="text-stone-400 text-sm uppercase tracking-widest mb-1">Volumen pr. Hektar</p>
-                                            <p className="text-4xl font-black text-white">{resultater.volumenHa.toFixed(1)} m³</p>
+                                            <p className="text-4xl font-black text-white">{formatDK(resultater.volumenHa, 1)} m³</p>
                                         </div>
                                         
                                         <div className="text-center bg-green-900/40 border border-green-800/50 p-4 rounded-xl mt-2">
-                                            <p className="text-green-300/80 text-xs uppercase tracking-widest mb-1">Total Volumen for {areal || 0} ha</p>
-                                            <p className="text-5xl font-black text-green-400 drop-shadow-md">{resultater.volumenTotal.toFixed(1)} m³</p>
+                                            <p className="text-green-300/80 text-xs uppercase tracking-widest mb-1">Total Volumen for {formatDK(areal)} ha</p>
+                                            <p className="text-5xl font-black text-green-400 drop-shadow-md">{formatDK(resultater.volumenTotal, 1)} m³</p>
                                         </div>
                                     </div>
 
