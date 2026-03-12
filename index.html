@@ -53,6 +53,7 @@
         const Save = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
         const FolderOpen = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>;
         const XIcon = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const Layers = ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>;
 
         // --- DATA ---
         const FORMTAL_GRIDS = {
@@ -102,18 +103,18 @@
                 }
             };
 
-            // --- Input State (Nu med indlæsning fra browserens hukommelse) ---
+            // --- Input State ---
             const [radius, setRadius] = useState(() => getSavedState('skov_radius', "")); 
             const [areal, setAreal] = useState(() => getSavedState('skov_areal', "")); 
             const [valgtTræIndeks, setValgtTræIndeks] = useState(() => getSavedState('skov_art', 7));
 
-            // Træ-liste state
+            // Træ-liste state (Nu med art gemt pr. træ)
             const [trees, setTrees] = useState(() => getSavedState('skov_trees', []));
             
             // Gemte Prøveflader State
             const [savedPlots, setSavedPlots] = useState(() => getSavedState('skov_saved_plots', []));
             
-            // State til indtastningsfeltet (gemmes ikke lokalt)
+            // State til indtastningsfeltet 
             const [nyDiameter, setNyDiameter] = useState("");
             const [nyHoejde, setNyHoejde] = useState(""); 
             
@@ -124,7 +125,11 @@
             // Modals State
             const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
             const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
-            const [saveMode, setSaveMode] = useState('structured'); // 'structured' or 'custom'
+            const [saveMode, setSaveMode] = useState('structured'); 
+            
+            // Merge Prøveflader State
+            const [mergeMode, setMergeMode] = useState(false);
+            const [selectedForMerge, setSelectedForMerge] = useState([]);
             
             // Gem Data Formfelter
             const [saveSkov, setSaveSkov] = useState("");
@@ -175,10 +180,9 @@
                 return R1 + y_factor * (R2 - R1);
             };
 
-            // Tilføj træ funktion
+            // Tilføj træ funktion (tilføjer den aktuelle valgte træart til objektet)
             const tilfoejTrae = (e) => {
                 e.preventDefault();
-                // Tillad dansk komma ved konvertering (hvis indtastet som streng, fx 15,5 bliver 15.5 i JS)
                 const parsedD = parseFloat(nyDiameter.toString().replace(',', '.'));
                 const parsedH = parseFloat(nyHoejde.toString().replace(',', '.'));
                 
@@ -186,7 +190,8 @@
                     setTrees([...trees, { 
                         id: Date.now(), 
                         d: parsedD, 
-                        h: parsedH 
+                        h: parsedH,
+                        artIndeks: valgtTræIndeks // Gemmer arten på dette specifikke træ
                     }]);
                     setNyDiameter(""); 
                     dInputRef.current?.focus(); 
@@ -205,11 +210,15 @@
                 setVisRydBekræft(false);
             };
 
-            // --- Gem og Hent Prøveflader Funktioner ---
+            // --- Gem, Hent og Sammenlæg Prøveflader Funktioner ---
             const handleSavePlot = () => {
                 let plotName = "";
+                
+                // Sikkerhedstjek for gamle træ-objekter uden artIndeks
+                const unikeArter = [...new Set(trees.map(t => TRAEARTER[t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks].navn))];
+                const dynamiskArtNavn = unikeArter.length > 1 ? 'Blandingsskov' : (unikeArter[0] || TRAEARTER[valgtTræIndeks].navn);
+
                 if (saveMode === 'structured') {
-                    const artNavn = TRAEARTER[valgtTræIndeks].navn;
                     const parts = [];
                     
                     if (saveAarstal) {
@@ -224,7 +233,7 @@
                     if (saveAfdeling) parts.push(`afd. ${saveAfdeling}`);
                     if (saveSkov) parts.push(`${saveSkov}`);
                     
-                    plotName = `${artNavn}` + (parts.length > 0 ? `, ${parts.join(', ')}` : '');
+                    plotName = `${dynamiskArtNavn}` + (parts.length > 0 ? `, ${parts.join(', ')}` : '');
                 } else {
                     plotName = saveCustomName.trim() || 'Unavngivet prøveflade';
                 }
@@ -239,7 +248,6 @@
                 setSavedPlots([...savedPlots, newPlot]);
                 setIsSaveModalOpen(false);
                 
-                // Nulstil form felter
                 setSaveSkov(""); setSaveAfdeling(""); setSaveLitra(""); setSaveAarstal(""); setSaveCustomName("");
             };
 
@@ -248,11 +256,66 @@
                 setAreal(plot.data.areal);
                 setValgtTræIndeks(plot.data.valgtTræIndeks);
                 setTrees(plot.data.trees);
-                setIsLoadModalOpen(false);
+                closeLoadModal();
             };
 
             const deletePlot = (id) => {
                 setSavedPlots(savedPlots.filter(p => p.id !== id));
+                setSelectedForMerge(selectedForMerge.filter(selectedId => selectedId !== id));
+            };
+
+            const toggleMergeSelection = (id) => {
+                if (selectedForMerge.includes(id)) {
+                    setSelectedForMerge(selectedForMerge.filter(i => i !== id));
+                } else {
+                    setSelectedForMerge([...selectedForMerge, id]);
+                }
+            };
+
+            const executeMerge = () => {
+                if (selectedForMerge.length < 2) return;
+
+                let totalSampleArea = 0;
+                let combinedTrees = [];
+                let firstAreal = "";
+
+                selectedForMerge.forEach(id => {
+                    const plot = savedPlots.find(p => p.id === id);
+                    if (plot) {
+                        const r = parseFloat(plot.data.radius.toString().replace(',', '.'));
+                        if (!isNaN(r) && r > 0) {
+                            totalSampleArea += Math.PI * Math.pow(r, 2);
+                        }
+                        
+                        if (!firstAreal && plot.data.areal) {
+                            firstAreal = plot.data.areal;
+                        }
+
+                        // Samler alle træer og giver dem nye unikke id'er for at undgå fejl i listen
+                        plot.data.trees.forEach(t => {
+                            combinedTrees.push({
+                                ...t,
+                                id: Date.now() + Math.random(), 
+                                artIndeks: t.artIndeks !== undefined ? t.artIndeks : plot.data.valgtTræIndeks
+                            });
+                        });
+                    }
+                });
+
+                // Matematikken: Finder den nye præcise radius, der svarer til det samlede prøveareal
+                const combinedRadius = totalSampleArea > 0 ? Math.sqrt(totalSampleArea / Math.PI) : 0;
+                
+                setRadius(formatDK(combinedRadius, 2));
+                setAreal(firstAreal);
+                setTrees(combinedTrees);
+                
+                closeLoadModal();
+            };
+
+            const closeLoadModal = () => {
+                setIsLoadModalOpen(false);
+                setMergeMode(false);
+                setSelectedForMerge([]);
             };
 
             // --- Hovedberegning ---
@@ -264,8 +327,9 @@
                 volumenHa: 0,
                 volumenTotal: 0,
                 gnsFormtal: 0,
-                loreysH: 0,
-                v_g: 0
+                Hg: 0, 
+                v_g: 0,
+                speciesStats: [] // Til blandingsprocenter
             });
 
             useEffect(() => {
@@ -274,7 +338,7 @@
                 const arealNum = parseFloat(areal.toString().replace(',', '.')) || 0;
                 
                 if (N_plot === 0 || !radNum || radNum <= 0) {
-                    setResultater({ stamtalPrHa: 0, G_ha: 0, Dg: 0, HD_forhold: 0, volumenHa: 0, volumenTotal: 0, gnsFormtal: 0, loreysH: 0, v_g: 0 });
+                    setResultater({ stamtalPrHa: 0, G_ha: 0, Dg: 0, HD_forhold: 0, volumenHa: 0, volumenTotal: 0, gnsFormtal: 0, Hg: 0, v_g: 0, speciesStats: [] });
                     return;
                 }
 
@@ -282,18 +346,23 @@
                 const opgangningsFaktor = 10000 / prøveArealM2;
                 const stamtalPrHa = N_plot * opgangningsFaktor;
 
-                const valgtArt = TRAEARTER[valgtTræIndeks];
-                const gridData = FORMTAL_GRIDS[valgtArt.navn];
-
                 let g_sum = 0;
                 let v_sum = 0;
                 let hd_sum = 0;
                 let gh_sum = 0;
+                
+                // Objekter til at holde styr på volumen pr. art
+                let artVolumen = {};
 
                 trees.forEach(tree => {
                     const radiusM = (tree.d / 100) / 2;
                     const g_i = Math.PI * Math.pow(radiusM, 2);
                     
+                    // Tillad gamle gemte prøveflader (hvor artIndeks mangler) at bruge valgtTræIndeks
+                    const artIdx = tree.artIndeks !== undefined ? tree.artIndeks : valgtTræIndeks;
+                    const valgtArt = TRAEARTER[artIdx];
+                    const gridData = FORMTAL_GRIDS[valgtArt.navn];
+
                     let f_i = valgtArt.standardFormtal;
                     if (gridData) {
                         f_i = beregnFormtalFraGrid(tree.d, tree.h, gridData);
@@ -306,6 +375,10 @@
                     v_sum += v_i;
                     hd_sum += hd_i;
                     gh_sum += (g_i * tree.h);
+
+                    // Tæl volumen for den specifikke art
+                    if (!artVolumen[valgtArt.navn]) artVolumen[valgtArt.navn] = 0;
+                    artVolumen[valgtArt.navn] += v_i;
                 });
 
                 const G_ha = g_sum * opgangningsFaktor;
@@ -317,11 +390,17 @@
                 const Dg = Dg_meter * 100; 
 
                 const HD_mean = hd_sum / N_plot;
-                const loreysH = g_sum > 0 ? gh_sum / g_sum : 0;
+                const Hg = g_sum > 0 ? gh_sum / g_sum : 0;
                 const v_g = v_sum / N_plot;
-
                 const h_mean = trees.reduce((acc, t) => acc + t.h, 0) / N_plot;
                 const gnsFormtal = v_sum / (g_sum * h_mean);
+
+                // Beregn fordeling for blandingsskov (Sorteret efter volumen)
+                const speciesStats = Object.keys(artVolumen).map(artNavn => {
+                    const v_ha_art = artVolumen[artNavn] * opgangningsFaktor;
+                    const pct = v_sum > 0 ? (artVolumen[artNavn] / v_sum) * 100 : 0;
+                    return { art: artNavn, v_ha: v_ha_art, pct };
+                }).sort((a, b) => b.pct - a.pct);
 
                 setResultater({
                     stamtalPrHa,
@@ -331,14 +410,18 @@
                     volumenHa: V_ha,
                     volumenTotal: V_total,
                     gnsFormtal: gnsFormtal || 0,
-                    loreysH,
-                    v_g
+                    Hg,
+                    v_g,
+                    speciesStats
                 });
             }, [trees, radius, valgtTræIndeks, areal]);
 
             // --- Eksport & Deling ---
             const genererResumeTekst = () => {
-                let tekst = `SKOVTAKSATION: ${TRAEARTER[valgtTræIndeks].navn}\n`;
+                const navneArr = resultater.speciesStats.map(s => s.art);
+                const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
+                
+                let tekst = `SKOVTAKSATION: ${hovedNavn}\n`;
                 tekst += `Areal: ${formatDK(areal)} ha  |  Prøveflade r=${formatDK(radius)}m\n`;
                 tekst += `--------------------------------\n`;
                 tekst += `NØGLETAL\n`;
@@ -346,17 +429,26 @@
                 tekst += `• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n`;
                 tekst += `• Grundflade (G): ${formatDK(resultater.G_ha, 1)} m²/ha\n`;
                 tekst += `• Dg:             ${formatDK(resultater.Dg, 1)} cm\n`;
-                tekst += `• Loreys Højde:   ${formatDK(resultater.loreysH, 1)} m\n`;
+                tekst += `• Hg:             ${formatDK(resultater.Hg, 1)} m\n`;
                 tekst += `• Middeltræ (Vg): ${formatDK(resultater.v_g, 3)} m³\n`;
                 tekst += `--------------------------------\n`;
                 tekst += `VEDMASSE\n`;
                 tekst += `• Pr. hektar:     ${formatDK(resultater.volumenHa, 1)} m³/ha\n`;
                 tekst += `• Total volumen:  ${formatDK(resultater.volumenTotal, 1)} m³\n`;
-                tekst += `--------------------------------\n`;
-                tekst += `MÅLTE TRÆER (Dia. / Højde):\n`;
                 
+                if (resultater.speciesStats.length > 1) {
+                    tekst += `--------------------------------\n`;
+                    tekst += `ARTFORDELING (Vedmasse)\n`;
+                    resultater.speciesStats.forEach(stat => {
+                        tekst += `• ${stat.art}: ${formatDK(stat.pct, 1)} % (${formatDK(stat.v_ha, 1)} m³/ha)\n`;
+                    });
+                }
+                
+                tekst += `--------------------------------\n`;
+                tekst += `MÅLTE TRÆER (Art / Dia. / Højde):\n`;
                 [...trees].reverse().forEach((t, index) => {
-                    tekst += `  #${trees.length - index}: ${formatDK(t.d)} cm / ${formatDK(t.h)} m\n`;
+                    const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
+                    tekst += `  #${trees.length - index}: ${TRAEARTER[artIdx].navn} / ${formatDK(t.d)} cm / ${formatDK(t.h)} m\n`;
                 });
                 
                 return tekst;
@@ -399,23 +491,35 @@
 
             const downloadCSV = () => {
                 let csvContent = "\uFEFF"; 
+                const navneArr = resultater.speciesStats.map(s => s.art);
+                const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
                 
                 csvContent += "BESTANDSDATA\n";
-                csvContent += `Træart;${TRAEARTER[valgtTræIndeks].navn}\n`;
+                csvContent += `Skovtype;${hovedNavn}\n`;
                 csvContent += `Radius (m);${formatDK(radius)}\n`;
                 csvContent += `Areal (ha);${formatDK(areal)}\n`;
                 csvContent += `Stamtal (stk/ha);${Math.round(resultater.stamtalPrHa)}\n`;
                 csvContent += `Grundflade (m2/ha);${formatDK(resultater.G_ha, 2)}\n`;
                 csvContent += `Dg (cm);${formatDK(resultater.Dg, 2)}\n`;
-                csvContent += `Loreys Højde (m);${formatDK(resultater.loreysH, 2)}\n`;
+                csvContent += `Hg (m);${formatDK(resultater.Hg, 2)}\n`;
                 csvContent += `Middeltræ (m3);${formatDK(resultater.v_g, 3)}\n`;
                 csvContent += `Volumen (m3/ha);${formatDK(resultater.volumenHa, 2)}\n`;
                 csvContent += `Total Volumen (m3);${formatDK(resultater.volumenTotal, 2)}\n\n`;
                 
+                if (resultater.speciesStats.length > 1) {
+                    csvContent += "ARTFORDELING (VEDMASSE)\n";
+                    csvContent += "Art;Procent (%);Volumen (m3/ha)\n";
+                    resultater.speciesStats.forEach(stat => {
+                        csvContent += `${stat.art};${formatDK(stat.pct, 2)};${formatDK(stat.v_ha, 2)}\n`;
+                    });
+                    csvContent += "\n";
+                }
+                
                 csvContent += "MÅLTE TRÆER\n";
-                csvContent += "Træ Nr;Diameter (cm);Højde (m)\n";
+                csvContent += "Træ Nr;Art;Diameter (cm);Højde (m)\n";
                 [...trees].reverse().forEach((t, index) => {
-                    csvContent += `${trees.length - index};${formatDK(t.d)};${formatDK(t.h)}\n`;
+                    const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
+                    csvContent += `${trees.length - index};${TRAEARTER[artIdx].navn};${formatDK(t.d)};${formatDK(t.h)}\n`;
                 });
 
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -465,12 +569,6 @@
                                             <label className="text-xs font-bold uppercase text-green-800 mb-1">Totalt Areal (ha)</label>
                                             <input type="number" step="0.1" value={areal} onChange={(e) => setAreal(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none" placeholder="F.eks. 1.5" />
                                         </div>
-                                        <div className="flex flex-col col-span-2">
-                                            <label className="text-xs font-medium text-stone-600 mb-1">Træart</label>
-                                            <select value={valgtTræIndeks} onChange={(e) => setValgtTræIndeks(Number(e.target.value))} className="p-2 border border-stone-300 rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none">
-                                                {TRAEARTER.map((træ, idx) => <option key={idx} value={idx}>{træ.navn}</option>)}
-                                            </select>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -484,33 +582,41 @@
                                     </div>
 
                                     {/* Hurtig indtastning */}
-                                    <form onSubmit={tilfoejTrae} className="flex gap-2 items-end bg-green-50 p-3 rounded-lg border border-green-200 shadow-sm">
-                                        <div className="flex-1">
-                                            <label className="text-xs font-bold text-green-900 mb-1 block">Diameter (cm)</label>
-                                            <input 
-                                                ref={dInputRef}
-                                                type="number" 
-                                                step="0.1"
-                                                value={nyDiameter} 
-                                                onChange={(e) => setNyDiameter(e.target.value)} 
-                                                placeholder="D"
-                                                className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                            />
+                                    <form onSubmit={tilfoejTrae} className="flex flex-col gap-2 bg-green-50 p-3 rounded-lg border border-green-200 shadow-sm">
+                                        <div className="flex flex-col">
+                                            <label className="text-xs font-bold text-green-900 mb-1 block">Træart</label>
+                                            <select value={valgtTræIndeks} onChange={(e) => setValgtTræIndeks(Number(e.target.value))} className="p-2 border border-green-300 rounded bg-white focus:ring-2 focus:ring-green-500 outline-none w-full">
+                                                {TRAEARTER.map((træ, idx) => <option key={idx} value={idx}>{træ.navn}</option>)}
+                                            </select>
                                         </div>
-                                        <div className="flex-1">
-                                            <label className="text-xs font-bold text-green-900 mb-1 block">Højde (m)</label>
-                                            <input 
-                                                type="number" 
-                                                step="0.1"
-                                                value={nyHoejde} 
-                                                onChange={(e) => setNyHoejde(e.target.value)} 
-                                                placeholder="H"
-                                                className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                            />
+                                        <div className="flex gap-2 items-end mt-1">
+                                            <div className="flex-1">
+                                                <label className="text-xs font-bold text-green-900 mb-1 block">Diameter (cm)</label>
+                                                <input 
+                                                    ref={dInputRef}
+                                                    type="number" 
+                                                    step="0.1"
+                                                    value={nyDiameter} 
+                                                    onChange={(e) => setNyDiameter(e.target.value)} 
+                                                    placeholder="D"
+                                                    className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-xs font-bold text-green-900 mb-1 block">Højde (m)</label>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.1"
+                                                    value={nyHoejde} 
+                                                    onChange={(e) => setNyHoejde(e.target.value)} 
+                                                    placeholder="H"
+                                                    className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
+                                                />
+                                            </div>
+                                            <button type="submit" disabled={!nyDiameter || !nyHoejde} className="bg-green-700 text-white p-2 rounded hover:bg-green-800 disabled:opacity-50 transition-colors h-[42px] px-4 flex items-center gap-1">
+                                                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Tilføj</span>
+                                            </button>
                                         </div>
-                                        <button type="submit" disabled={!nyDiameter || !nyHoejde} className="bg-green-700 text-white p-2 rounded hover:bg-green-800 disabled:opacity-50 transition-colors h-[42px] px-4 flex items-center gap-1">
-                                            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Tilføj</span>
-                                        </button>
                                     </form>
 
                                     {/* Listen med træer */}
@@ -519,6 +625,7 @@
                                             <thead className="bg-stone-200 sticky top-0">
                                                 <tr>
                                                     <th className="p-2 font-medium text-stone-600">#</th>
+                                                    <th className="p-2 font-medium text-stone-600">Art</th>
                                                     <th className="p-2 font-medium text-stone-600">Diameter</th>
                                                     <th className="p-2 font-medium text-stone-600">Højde</th>
                                                     <th className="p-2 font-medium text-stone-600 text-right">Slet</th>
@@ -526,20 +633,24 @@
                                             </thead>
                                             <tbody>
                                                 {trees.length === 0 ? (
-                                                    <tr><td colSpan="4" className="text-center p-4 text-stone-400 italic">Begynd at taste træer ovenfor for at starte.</td></tr>
+                                                    <tr><td colSpan="5" className="text-center p-4 text-stone-400 italic">Begynd at taste træer ovenfor for at starte.</td></tr>
                                                 ) : (
-                                                    trees.reverse().map((t, index) => (
-                                                        <tr key={t.id} className="border-b border-stone-100 last:border-0 hover:bg-white">
-                                                            <td className="p-2 text-stone-400">{trees.length - index}</td>
-                                                            <td className="p-2 font-semibold">{formatDK(t.d)} cm</td>
-                                                            <td className="p-2 text-stone-600">{formatDK(t.h)} m</td>
-                                                            <td className="p-2 text-right">
-                                                                <button onClick={() => sletTrae(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded inline-flex justify-center w-full">
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
+                                                    trees.reverse().map((t, index) => {
+                                                        const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
+                                                        return (
+                                                            <tr key={t.id} className="border-b border-stone-100 last:border-0 hover:bg-white">
+                                                                <td className="p-2 text-stone-400">{trees.length - index}</td>
+                                                                <td className="p-2 text-stone-600 text-xs font-semibold">{TRAEARTER[artIdx].navn}</td>
+                                                                <td className="p-2 font-semibold">{formatDK(t.d)} cm</td>
+                                                                <td className="p-2 text-stone-600">{formatDK(t.h)} m</td>
+                                                                <td className="p-2 text-right">
+                                                                    <button onClick={() => sletTrae(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded inline-flex justify-center w-full">
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
                                                 )}
                                             </tbody>
                                         </table>
@@ -564,8 +675,8 @@
                                             <p className="text-2xl font-bold text-white">{formatDK(resultater.Dg, 1)} <span className="text-sm font-normal text-stone-400">cm</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Loreys Middelhøjde">Loreys Højde (HL)</p>
-                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.loreysH, 1)} <span className="text-sm font-normal text-stone-400">m</span></p>
+                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Grundflademiddelhøjde">Grundflade.Mid.Høj (Hg)</p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.Hg, 1)} <span className="text-sm font-normal text-stone-400">m</span></p>
                                         </div>
                                         <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade (G)</p>
@@ -609,6 +720,24 @@
                                             <p className="text-5xl font-black text-green-400 drop-shadow-md">{formatDK(resultater.volumenTotal, 1)} m³</p>
                                         </div>
                                     </div>
+
+                                    {/* Blandingsfordeling (Vises kun hvis der er flere arter) */}
+                                    {resultater.speciesStats && resultater.speciesStats.length > 1 && (
+                                        <div className="mt-4 bg-stone-700/40 p-4 rounded-lg border border-stone-600">
+                                            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Blandingsfordeling (Vedmasse)</h3>
+                                            <div className="space-y-2">
+                                                {resultater.speciesStats.map(stat => (
+                                                    <div key={stat.art} className="flex justify-between items-center text-sm">
+                                                        <span className="text-stone-300 font-medium">{stat.art}</span>
+                                                        <div className="flex gap-3 items-center">
+                                                            <span className="text-yellow-400 font-mono w-14 text-right">{formatDK(stat.pct, 1)} %</span>
+                                                            <span className="text-white w-20 text-right">{formatDK(stat.v_ha, 1)} m³/ha</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Håndtering af Prøveflader */}
                                     <div className="pt-4 border-t border-stone-600 mt-6 space-y-3">
@@ -665,7 +794,7 @@
                             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                                     <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
-                                        <Save className="w-5 h-5" /> Gem Prøveflade
+                                        <Save className="w-5 h-5" /> Gem prøveflade
                                     </h3>
                                     <button onClick={() => setIsSaveModalOpen(false)} className="text-stone-400 hover:text-stone-700">
                                         <XIcon className="w-5 h-5" />
@@ -690,7 +819,7 @@
 
                                 {saveMode === 'structured' ? (
                                     <div className="space-y-3 mb-6">
-                                        <p className="text-xs text-stone-500 mb-2">Træart indsættes automatisk ({TRAEARTER[valgtTræIndeks].navn}). Udfyld de felter du har brug for:</p>
+                                        <p className="text-xs text-stone-500 mb-2">Træart/Blandingsskov indsættes automatisk i titlen. Udfyld de felter du har brug for:</p>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="flex flex-col">
                                                 <label className="text-xs font-bold uppercase text-stone-600 mb-1">Årstal</label>
@@ -729,42 +858,90 @@
                     {/* MODAL: Åbn Gemte Prøveflader */}
                     {isLoadModalOpen && (
                         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
-                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col max-h-[90vh]">
+                                <div className="flex justify-between items-center mb-2 border-b pb-2">
                                     <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
-                                        <FolderOpen className="w-5 h-5" /> Mine Prøveflader
+                                        <FolderOpen className="w-5 h-5" /> Åbn gemte
                                     </h3>
-                                    <button onClick={() => setIsLoadModalOpen(false)} className="text-stone-400 hover:text-stone-700">
+                                    <button onClick={closeLoadModal} className="text-stone-400 hover:text-stone-700">
                                         <XIcon className="w-5 h-5" />
                                     </button>
                                 </div>
+                                
+                                {/* Toggle Merge Mode */}
+                                {savedPlots.length > 0 && (
+                                    <div className="flex justify-between items-center mb-4 bg-stone-50 p-2 rounded-lg border border-stone-200">
+                                        <p className="text-xs text-stone-600 font-medium">Vælg handling:</p>
+                                        <button 
+                                            onClick={() => {
+                                                setMergeMode(!mergeMode);
+                                                setSelectedForMerge([]);
+                                            }} 
+                                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${mergeMode ? 'bg-stone-700 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                                        >
+                                            <Layers className="w-3 h-3" />
+                                            {mergeMode ? 'Afbryd sammenlægning' : 'Sammenlæg flere'}
+                                        </button>
+                                    </div>
+                                )}
 
-                                <div className="max-h-80 overflow-y-auto space-y-2 mb-4">
+                                <div className="overflow-y-auto space-y-2 mb-4 flex-1 pr-1">
                                     {savedPlots.length === 0 ? (
                                         <p className="text-center p-4 text-stone-500 italic">Du har ikke gemt nogen prøveflader endnu.</p>
                                     ) : (
-                                        savedPlots.slice().reverse().map(plot => (
-                                            <div key={plot.id} className="border border-stone-200 p-3 rounded-lg flex flex-col gap-2 hover:bg-stone-50 transition-colors">
-                                                <div>
-                                                    <p className="font-semibold text-stone-800 text-sm leading-tight">{plot.name}</p>
-                                                    <p className="text-xs text-stone-500 mt-1">Gemt d. {plot.date} • {plot.data.trees.length} målte træer</p>
+                                        savedPlots.slice().reverse().map(plot => {
+                                            const isSelected = selectedForMerge.includes(plot.id);
+                                            return (
+                                                <div 
+                                                    key={plot.id} 
+                                                    onClick={() => mergeMode && toggleMergeSelection(plot.id)}
+                                                    className={`border p-3 rounded-lg flex flex-col gap-2 transition-colors cursor-pointer ${mergeMode && isSelected ? 'border-green-500 bg-green-50' : 'border-stone-200 hover:bg-stone-50'}`}
+                                                >
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-semibold text-stone-800 text-sm leading-tight">{plot.name}</p>
+                                                            <p className="text-xs text-stone-500 mt-1">Gemt d. {plot.date} • {plot.data.trees.length} træer • Areal: {plot.data.areal || 0} ha</p>
+                                                        </div>
+                                                        {mergeMode && (
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isSelected}
+                                                                readOnly
+                                                                className="w-4 h-4 text-green-600 mt-1 pointer-events-none"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {!mergeMode && (
+                                                        <div className="flex gap-2 mt-1">
+                                                            <button onClick={(e) => { e.stopPropagation(); loadPlot(plot); }} className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold p-2 rounded transition-colors">
+                                                                Åbn
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); deletePlot(plot.id); }} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded transition-colors" title="Slet">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="flex gap-2 mt-1">
-                                                    <button onClick={() => loadPlot(plot)} className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold p-2 rounded transition-colors">
-                                                        Åbn
-                                                    </button>
-                                                    <button onClick={() => deletePlot(plot.id)} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded transition-colors" title="Slet">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </div>
 
-                                <button onClick={() => setIsLoadModalOpen(false)} className="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold p-3 rounded-lg transition-colors">
-                                    Luk
-                                </button>
+                                {mergeMode ? (
+                                    <button 
+                                        onClick={executeMerge} 
+                                        disabled={selectedForMerge.length < 2}
+                                        className={`w-full font-bold p-3 rounded-lg transition-colors flex justify-center items-center gap-2 ${selectedForMerge.length >= 2 ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}
+                                    >
+                                        <Layers className="w-5 h-5" />
+                                        Sammenlæg og indlæs ({selectedForMerge.length} valgt)
+                                    </button>
+                                ) : (
+                                    <button onClick={closeLoadModal} className="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold p-3 rounded-lg transition-colors">
+                                        Luk
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
