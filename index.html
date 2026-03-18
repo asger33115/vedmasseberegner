@@ -662,7 +662,7 @@
                                                 {trees.length === 0 ? (
                                                     <tr><td colSpan="5" className="text-center p-4 text-stone-400 italic">Begynd at taste træer ovenfor for at starte.</td></tr>
                                                 ) : (
-                                                    trees.reverse().map((t, index) => {
+                                                    [...trees].reverse().map((t, index) => {
                                                         const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
                                                         return (
                                                             <tr key={t.id} className="border-b border-stone-100 last:border-0 hover:bg-white">
