@@ -20,6 +20,7 @@
     
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        /* Fjerner pile fra tal-input i nogle browsere for et renere look */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none; 
@@ -376,88 +377,93 @@
             };
 
             const downloadCSV = () => {
-                // Den vigtige "BOM" der tvinger Excel og OneDrive til at læse æ, ø og å korrekt i UTF-8. 
-                // Uden mystiske "sep=;" tags som ødelægger kolonne-strukturen.
-                let csv = "\uFEFF"; 
-                
-                const navneArr = resultater.speciesStats.map(s => s.art);
-                const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
-                const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
-                
-                const radStr = radius ? radius.toString().replace(',', '.') : '0';
-                const radNum = parseFloat(radStr) || 0;
-                
-                // Udregning af gennemsnitlig radius (f.eks. ved sammenlagte 15m flader vil den ramme præcis 15m)
-                let gnsRadius = 0;
-                if (radNum > 0 && antalFlader > 0) {
-                    gnsRadius = Math.sqrt(Math.pow(radNum, 2) / antalFlader);
-                }
+                try {
+                    let csv = ""; 
+                    
+                    const navneArr = resultater.speciesStats.map(s => s.art);
+                    const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
+                    const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
+                    
+                    const radStr = radius ? radius.toString().replace(',', '.') : '0';
+                    const radNum = parseFloat(radStr) || 0;
+                    
+                    let gnsRadius = 0;
+                    if (radNum > 0 && antalFlader > 0) {
+                        gnsRadius = Math.sqrt(Math.pow(radNum, 2) / antalFlader);
+                    }
 
-                // --- CSV STAMDATA (Clean og flot opsætning) ---
-                csv += "BESTANDSDATA\n";
-                csv += `Skov / Ejendom;${saveSkov || 'Ikke oplyst'}\n`;
-                csv += `Afdeling;${saveAfdeling || 'Ikke oplyst'}\n`;
-                csv += `Litra;${saveLitra || 'Ikke oplyst'}\n`;
-                csv += `Plantningsår;${saveAarstal || 'Ikke oplyst'}\n`;
-                csv += `Alder;${alder}\n`;
-                csv += `Skovtype;${hovedNavn}\n`;
-                csv += `Gns. radius pr. flade (m);${formatDK(gnsRadius, 2)}\n`;
-                csv += `Antal prøveflader i beregningen;${antalFlader}\n`;
-                csv += `Totalt areal (ha);${formatDK(areal)}\n\n`;
-                
-                // --- CSV NØGLETAL ---
-                csv += "NØGLETAL (PR. HEKTAR)\n";
-                csv += `Antal opmålte træer;${trees.length} stk\n`;
-                csv += `Stamtal (stk/ha);${Math.round(resultater.stamtalPrHa || 0)}\n`;
-                csv += `Grundflade (m2/ha);${formatDK(resultater.G_ha, 2)}\n`;
-                csv += `Dg (cm);${formatDK(resultater.Dg, 2)}\n`;
-                csv += `Hg (m);${formatDK(resultater.Hg, 2)}\n`;
-                csv += `Middeltræ (m3);${formatDK(resultater.v_g, 3)}\n`;
-                csv += `H/D forhold;${formatDK(resultater.HD_forhold, 1)}\n`;
-                csv += `Gns. formtal;${formatDK(resultater.gnsFormtal, 3)}\n`;
-                csv += `Volumen (m3/ha);${formatDK(resultater.volumenHa, 2)}\n`;
-                csv += `Total volumen for ${formatDK(areal)} ha (m3);${formatDK(resultater.volumenTotal, 2)}\n\n`;
-                
-                // --- CSV ARTFORDELING ---
-                if (resultater.speciesStats && resultater.speciesStats.length > 1) {
-                    csv += "ARTFORDELING (VEDMASSE)\n";
-                    csv += "Art;Andel (%);Volumen (m3/ha)\n";
-                    resultater.speciesStats.forEach(s => csv += `${s.art};${formatDK(s.pct, 2)};${formatDK(s.v_ha, 2)}\n`);
-                    csv += "\n";
-                }
-                
-                // --- CSV TRÆDATA ---
-                csv += "MÅLTE TRÆER\n";
-                csv += "Træ nr.;Art;Diameter d (cm);Højde h (m);Formtal f (interpoleret);Volumen v (m3);H/D forhold\n";
-                
-                [...trees].reverse().forEach((t, index) => {
-                    const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
-                    const nuværendeArt = TRAEARTER[artIdx];
-                    const gridData = FORMTAL_GRIDS[nuværendeArt.navn];
+                    // --- CSV STAMDATA (Clean og flot opsætning som i den roste version) ---
+                    csv += "STAMDATA & METADATA\n";
+                    csv += `Skov / Ejendom;${saveSkov || 'Ikke oplyst'}\n`;
+                    csv += `Afdeling;${saveAfdeling || 'Ikke oplyst'}\n`;
+                    csv += `Litra;${saveLitra || 'Ikke oplyst'}\n`;
+                    csv += `Plantningsår;${saveAarstal || 'Ikke oplyst'}\n`;
+                    csv += `Bevoksningens alder;${alder}\n`;
+                    csv += `Skovtype / Hovedart;${hovedNavn}\n`;
+                    csv += `Gennemsnitlig radius på prøveflade(r) (m);${formatDK(gnsRadius, 2)}\n`;
+                    csv += `Antal prøveflader i beregningen;${antalFlader}\n`;
+                    csv += `Totalt areal (ha);${formatDK(areal)}\n\n`;
                     
-                    let f_i = nuværendeArt.standardFormtal;
-                    if (gridData) f_i = beregnFormtalFraGrid(t.d, t.h, gridData);
+                    // --- CSV NØGLETAL ---
+                    csv += "BEREGNEDE NØGLETAL (HA-NIVEAU)\n";
+                    csv += `Antal opmålte træer;${trees.length} stk\n`;
+                    csv += `Stamtal (N);${Math.round(resultater.stamtalPrHa || 0)} stk/ha\n`;
+                    csv += `Grundflade (G);${formatDK(resultater.G_ha, 2)} m²/ha\n`;
+                    csv += `Grundflade middeldiameter (Dg);${formatDK(resultater.Dg, 2)} cm\n`;
+                    csv += `Grundflade middelhøjde (Hg);${formatDK(resultater.Hg, 2)} m\n`;
+                    csv += `Middeltræ volumen (Vg);${formatDK(resultater.v_g, 3)} m³\n`;
+                    csv += `Gennemsnitligt H/D forhold;${formatDK(resultater.HD_forhold, 1)}\n`;
+                    csv += `Gennemsnitligt formtal;${formatDK(resultater.gnsFormtal, 3)}\n`;
+                    csv += `Volumen pr. hektar;${formatDK(resultater.volumenHa, 2)} m³/ha\n`;
+                    csv += `Total volumen for hele arealet;${formatDK(resultater.volumenTotal, 2)} m³\n\n`;
                     
-                    const v_i = Math.PI * Math.pow((t.d / 100) / 2, 2) * t.h * f_i;
-                    const hd_forhold = t.d > 0 ? (t.h * 100) / t.d : 0;
+                    // --- CSV ARTFORDELING ---
+                    if (resultater.speciesStats && resultater.speciesStats.length > 1) {
+                        csv += "ARTFORDELING (VEDMASSE)\n";
+                        csv += "Træart;Andel (%);Volumen (m³/ha)\n";
+                        resultater.speciesStats.forEach(s => csv += `${s.art};${formatDK(s.pct, 2)};${formatDK(s.v_ha, 2)}\n`);
+                        csv += "\n";
+                    }
                     
-                    csv += `${trees.length - index};${nuværendeArt.navn};${formatDK(t.d, 1)};${formatDK(t.h, 1)};${formatDK(f_i, 4)};${formatDK(v_i, 4)};${formatDK(hd_forhold, 1)}\n`;
-                });
+                    // --- CSV TRÆDATA ---
+                    csv += "MÅLTE ENKELTTRÆER (RÅDATA TIL ANALYSE)\n";
+                    csv += "Træ nr.;Træart;Diameter d (cm);Højde h (m);Formtal f (interpoleret);Volumen v (m³);H/D forhold\n";
+                    
+                    [...trees].reverse().forEach((t, index) => {
+                        const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
+                        const nuværendeArt = TRAEARTER[artIdx];
+                        const gridData = FORMTAL_GRIDS[nuværendeArt.navn];
+                        
+                        let f_i = nuværendeArt.standardFormtal;
+                        if (gridData) f_i = beregnFormtalFraGrid(t.d, t.h, gridData);
+                        
+                        const v_i = Math.PI * Math.pow((t.d / 100) / 2, 2) * t.h * f_i;
+                        const hd_forhold = t.d > 0 ? (t.h * 100) / t.d : 0;
+                        
+                        csv += `${trees.length - index};${nuværendeArt.navn};${formatDK(t.d, 1)};${formatDK(t.h, 1)};${formatDK(f_i, 4)};${formatDK(v_i, 4)};${formatDK(hd_forhold, 1)}\n`;
+                    });
 
-                // Den klassiske download mekanisme som sikrer iPhone support
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.href = url;
-                
-                // Fjern ulovlige tegn fra skovnavn til filnavnet
-                const safeSkovNavn = (saveSkov || 'skov').toString().replace(/[^a-z0-9æøå]/gi, '_').toLowerCase();
-                link.download = `taksation_${safeSkovNavn}.csv`;
-                
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                    // Den sikre, "binære" BOM-løsning som tvinger Excel til at læse danske tegn korrekt
+                    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                    const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8' });
+                    
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    
+                    // Fjern ulovlige tegn fra skovnavn til filnavnet
+                    const safeSkovNavn = (saveSkov || 'skov').toString().replace(/[^a-z0-9æøå]/gi, '_').toLowerCase();
+                    link.download = `taksation_${safeSkovNavn}.csv`;
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                } catch (error) {
+                    console.error("Fejl ved CSV-generering:", error);
+                    alert("Der opstod en fejl ved generering af filen. Prøv venligst igen.");
+                }
             };
 
             return (
