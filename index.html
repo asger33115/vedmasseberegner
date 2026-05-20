@@ -5,20 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vedmasseberegner</title>
     
-    <!-- PWA Opsætning -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#166534">
     <link rel="apple-touch-icon" href="./icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- Henter React og værktøjer direkte fra nettet -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Ikoner -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
@@ -84,7 +81,7 @@
             { navn: 'Ædelgran', standardFormtal: 0.54 }, 
         ];
 
-        // --- Hjælpefunktion til dansk talformatering (komma i stedet for punktum) ---
+        // --- Hjælpefunktion til dansk talformatering ---
         const formatDK = (num, decimals = null) => {
             if (num === null || num === undefined || num === '') return '';
             const n = Number(num);
@@ -93,7 +90,6 @@
         };
 
         function SkovBeregner() {
-            // --- Funktion til at hente lokalt gemte data sikkert ---
             const getSavedState = (key, defaultValue) => {
                 try {
                     const saved = localStorage.getItem(key);
@@ -108,40 +104,34 @@
             const [areal, setAreal] = useState(() => getSavedState('skov_areal', "")); 
             const [valgtTræIndeks, setValgtTræIndeks] = useState(() => getSavedState('skov_art', 7));
 
-            // Træ-liste state (Nu med art gemt pr. træ)
+            // Træ-liste state
             const [trees, setTrees] = useState(() => getSavedState('skov_trees', []));
-            
-            // Gemte Prøveflader State
             const [savedPlots, setSavedPlots] = useState(() => getSavedState('skov_saved_plots', []));
             
-            // State til indtastningsfeltet (To felter til krydsklupning)
+            // Stamdata / Metadata (Nu tilgængelige direkte fra forsiden)
+            const [saveSkov, setSaveSkov] = useState(() => getSavedState('skov_ejendom', ""));
+            const [saveAfdeling, setSaveAfdeling] = useState(() => getSavedState('skov_afd', ""));
+            const [saveLitra, setSaveLitra] = useState(() => getSavedState('skov_litra', ""));
+            const [saveAarstal, setSaveAarstal] = useState(() => getSavedState('skov_aarstal', ""));
+            const [saveCustomName, setSaveCustomName] = useState("");
+
+            // Inputfelter til måling
             const [nyDiameter1, setNyDiameter1] = useState("");
             const [nyDiameter2, setNyDiameter2] = useState(""); 
             const [nyHoejde, setNyHoejde] = useState(""); 
             
-            // Ekstra UI-state
+            // UI States
             const [kopieret, setKopieret] = useState(false);
             const [visRydBekræft, setVisRydBekræft] = useState(false);
-            
-            // Modals State
             const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
             const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
             const [saveMode, setSaveMode] = useState('structured'); 
-            
-            // Merge Prøveflader State
             const [mergeMode, setMergeMode] = useState(false);
             const [selectedForMerge, setSelectedForMerge] = useState([]);
-            
-            // Gem Data Formfelter
-            const [saveSkov, setSaveSkov] = useState("");
-            const [saveAfdeling, setSaveAfdeling] = useState("");
-            const [saveLitra, setSaveLitra] = useState("");
-            const [saveAarstal, setSaveAarstal] = useState("");
-            const [saveCustomName, setSaveCustomName] = useState("");
 
             const dInputRef = useRef(null); 
 
-            // --- Gem til lokal hukommelse hver gang noget ændres ---
+            // --- Gem alt i lokal hukommelse kontinuerligt ---
             useEffect(() => {
                 try {
                     localStorage.setItem('skov_radius', JSON.stringify(radius));
@@ -149,12 +139,16 @@
                     localStorage.setItem('skov_art', JSON.stringify(valgtTræIndeks));
                     localStorage.setItem('skov_trees', JSON.stringify(trees));
                     localStorage.setItem('skov_saved_plots', JSON.stringify(savedPlots));
+                    localStorage.setItem('skov_ejendom', JSON.stringify(saveSkov));
+                    localStorage.setItem('skov_afd', JSON.stringify(saveAfdeling));
+                    localStorage.setItem('skov_litra', JSON.stringify(saveLitra));
+                    localStorage.setItem('skov_aarstal', JSON.stringify(saveAarstal));
                 } catch (e) {
-                    console.warn("Kunne ikke gemme data lokalt.");
+                    console.warn("Kunne ikke gemme lokalt.");
                 }
-            }, [radius, areal, valgtTræIndeks, trees, savedPlots]);
+            }, [radius, areal, valgtTræIndeks, trees, savedPlots, saveSkov, saveAfdeling, saveLitra, saveAarstal]);
 
-            // --- Interpolation: Udregner det præcise formtal ud fra D og H ---
+            // --- Interpolation af formtal ---
             const beregnFormtalFraGrid = (d, h, gridData) => {
                 const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
                 const minD = gridData.diametre[0];
@@ -181,7 +175,6 @@
                 return R1 + y_factor * (R2 - R1);
             };
 
-            // Tilføj træ funktion (håndterer to klupninger eller enkelt skøn)
             const tilfoejTrae = (e) => {
                 e.preventDefault();
                 const pD1 = parseFloat(nyDiameter1.toString().replace(',', '.'));
@@ -189,8 +182,6 @@
                 const parsedH = parseFloat(nyHoejde.toString().replace(',', '.'));
                 
                 let finalD = 0;
-                
-                // Udregner gennemsnit hvis to tal findes, ellers bruger den bare ét.
                 if (!isNaN(pD1) && pD1 > 0 && !isNaN(pD2) && pD2 > 0) {
                     finalD = (pD1 + pD2) / 2;
                 } else if (!isNaN(pD1) && pD1 > 0) {
@@ -217,31 +208,21 @@
             };
 
             const rydAlt = () => {
-                setTrees([]);
-                setRadius("");
-                setAreal("");
-                setValgtTræIndeks(7);
+                setTrees([]); setRadius(""); setAreal(""); setValgtTræIndeks(7);
+                setSaveSkov(""); setSaveAfdeling(""); setSaveLitra(""); setSaveAarstal("");
                 setVisRydBekræft(false);
             };
 
-            // --- Gem, Hent og Sammenlæg Prøveflader Funktioner ---
             const handleSavePlot = () => {
                 let plotName = "";
-                
-                // Sikkerhedstjek for gamle træ-objekter uden artIndeks
                 const unikeArter = [...new Set(trees.map(t => TRAEARTER[t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks].navn))];
                 const dynamiskArtNavn = unikeArter.length > 1 ? 'Blandingsskov' : (unikeArter[0] || TRAEARTER[valgtTræIndeks].navn);
 
                 if (saveMode === 'structured') {
                     const parts = [];
-                    
                     if (saveAarstal) {
-                        const currentYear = new Date().getFullYear();
-                        const aarstal = parseInt(saveAarstal);
-                        if (!isNaN(aarstal)) {
-                            const alder = currentYear - aarstal;
-                            parts.push(`${aarstal} (${alder} år)`);
-                        }
+                        const alder = new Date().getFullYear() - parseInt(saveAarstal);
+                        if (!isNaN(alder)) parts.push(`${saveAarstal} (${alder} år)`);
                     }
                     if (saveLitra) parts.push(`Litra ${saveLitra}`);
                     if (saveAfdeling) parts.push(`afd. ${saveAfdeling}`);
@@ -252,98 +233,68 @@
                     plotName = saveCustomName.trim() || 'Unavngivet prøveflade';
                 }
 
-                const newPlot = {
-                    id: Date.now(),
-                    name: plotName,
-                    date: new Date().toLocaleDateString('da-DK'),
-                    data: { radius, areal, valgtTræIndeks, trees }
-                };
-
-                setSavedPlots([...savedPlots, newPlot]);
+                setSavedPlots([...savedPlots, {
+                    id: Date.now(), name: plotName, date: new Date().toLocaleDateString('da-DK'),
+                    data: { radius, areal, valgtTræIndeks, trees, saveSkov, saveAfdeling, saveLitra, saveAarstal }
+                }]);
                 setIsSaveModalOpen(false);
-                
-                setSaveSkov(""); setSaveAfdeling(""); setSaveLitra(""); setSaveAarstal(""); setSaveCustomName("");
+                setSaveCustomName("");
             };
 
             const loadPlot = (plot) => {
-                setRadius(plot.data.radius);
-                setAreal(plot.data.areal);
-                setValgtTræIndeks(plot.data.valgtTræIndeks);
-                setTrees(plot.data.trees);
+                setRadius(plot.data.radius); setAreal(plot.data.areal);
+                setValgtTræIndeks(plot.data.valgtTræIndeks); setTrees(plot.data.trees);
+                if(plot.data.saveSkov !== undefined) setSaveSkov(plot.data.saveSkov);
+                if(plot.data.saveAfdeling !== undefined) setSaveAfdeling(plot.data.saveAfdeling);
+                if(plot.data.saveLitra !== undefined) setSaveLitra(plot.data.saveLitra);
+                if(plot.data.saveAarstal !== undefined) setSaveAarstal(plot.data.saveAarstal);
                 closeLoadModal();
             };
 
             const deletePlot = (id) => {
                 setSavedPlots(savedPlots.filter(p => p.id !== id));
-                setSelectedForMerge(selectedForMerge.filter(selectedId => selectedId !== id));
+                setSelectedForMerge(selectedForMerge.filter(sid => sid !== id));
             };
 
             const toggleMergeSelection = (id) => {
-                if (selectedForMerge.includes(id)) {
-                    setSelectedForMerge(selectedForMerge.filter(i => i !== id));
-                } else {
-                    setSelectedForMerge([...selectedForMerge, id]);
-                }
+                setSelectedForMerge(selectedForMerge.includes(id) ? selectedForMerge.filter(i => i !== id) : [...selectedForMerge, id]);
             };
 
             const executeMerge = () => {
                 if (selectedForMerge.length < 2) return;
-
-                let totalSampleArea = 0;
-                let combinedTrees = [];
-                let firstAreal = "";
+                let totalSampleArea = 0; let combinedTrees = [];
+                let firstSkov = "", firstAfd = "", firstLitra = "", firstAar = "", firstAreal = "";
 
                 selectedForMerge.forEach(id => {
                     const plot = savedPlots.find(p => p.id === id);
                     if (plot) {
                         const r = parseFloat(plot.data.radius.toString().replace(',', '.'));
-                        if (!isNaN(r) && r > 0) {
-                            totalSampleArea += Math.PI * Math.pow(r, 2);
-                        }
-                        
-                        if (!firstAreal && plot.data.areal) {
-                            firstAreal = plot.data.areal;
-                        }
+                        if (!isNaN(r) && r > 0) totalSampleArea += Math.PI * Math.pow(r, 2);
+                        if (!firstAreal && plot.data.areal) firstAreal = plot.data.areal;
+                        if (!firstSkov && plot.data.saveSkov) firstSkov = plot.data.saveSkov;
+                        if (!firstAfd && plot.data.saveAfdeling) firstAfd = plot.data.saveAfdeling;
+                        if (!firstLitra && plot.data.saveLitra) firstLitra = plot.data.saveLitra;
+                        if (!firstAar && plot.data.saveAarstal) firstAar = plot.data.saveAarstal;
 
-                        // Samler alle træer og giver dem nye unikke id'er for at undgå fejl i listen
                         plot.data.trees.forEach(t => {
                             combinedTrees.push({
-                                ...t,
-                                id: Date.now() + Math.random(), 
+                                ...t, id: Date.now() + Math.random(), 
                                 artIndeks: t.artIndeks !== undefined ? t.artIndeks : plot.data.valgtTræIndeks
                             });
                         });
                     }
                 });
 
-                // Matematikken: Finder den nye præcise radius, der svarer til det samlede prøveareal
-                const combinedRadius = totalSampleArea > 0 ? Math.sqrt(totalSampleArea / Math.PI) : 0;
-                
-                setRadius(formatDK(combinedRadius, 2));
-                setAreal(firstAreal);
-                setTrees(combinedTrees);
-                
-                closeLoadModal();
+                setRadius(formatDK(totalSampleArea > 0 ? Math.sqrt(totalSampleArea / Math.PI) : 0, 2));
+                setAreal(firstAreal); setSaveSkov(firstSkov); setSaveAfdeling(firstAfd); setSaveLitra(firstLitra); setSaveAarstal(firstAar);
+                setTrees(combinedTrees); closeLoadModal();
             };
 
-            const closeLoadModal = () => {
-                setIsLoadModalOpen(false);
-                setMergeMode(false);
-                setSelectedForMerge([]);
-            };
+            const closeLoadModal = () => { setIsLoadModalOpen(false); setMergeMode(false); setSelectedForMerge([]); };
 
-            // --- Hovedberegning ---
+            // --- HOVEDBEREGNINGER ---
             const [resultater, setResultater] = useState({
-                stamtalPrHa: 0,
-                G_ha: 0,
-                Dg: 0,
-                HD_forhold: 0,
-                volumenHa: 0,
-                volumenTotal: 0,
-                gnsFormtal: 0,
-                Hg: 0, 
-                v_g: 0,
-                speciesStats: [] // Til blandingsprocenter
+                stamtalPrHa: 0, G_ha: 0, Dg: 0, HD_forhold: 0, volumenHa: 0, volumenTotal: 0, gnsFormtal: 0, Hg: 0, v_g: 0, speciesStats: []
             });
 
             useEffect(() => {
@@ -358,193 +309,117 @@
 
                 const prøveArealM2 = Math.PI * Math.pow(radNum, 2);
                 const opgangningsFaktor = 10000 / prøveArealM2;
-                const stamtalPrHa = N_plot * opgangningsFaktor;
-
-                let g_sum = 0;
-                let v_sum = 0;
-                let hd_sum = 0;
-                let gh_sum = 0;
                 
-                // Objekter til at holde styr på volumen pr. art
+                let g_sum = 0; let v_sum = 0; let hd_sum = 0; let gh_sum = 0;
                 let artVolumen = {};
 
                 trees.forEach(tree => {
                     const radiusM = (tree.d / 100) / 2;
                     const g_i = Math.PI * Math.pow(radiusM, 2);
-                    
-                    // Tillad gamle gemte prøveflader (hvor artIndeks mangler) at bruge valgtTræIndeks
                     const artIdx = tree.artIndeks !== undefined ? tree.artIndeks : valgtTræIndeks;
-                    const valgtArt = TRAEARTER[artIdx];
-                    const gridData = FORMTAL_GRIDS[valgtArt.navn];
+                    const nuværendeArt = TRAEARTER[artIdx];
+                    const gridData = FORMTAL_GRIDS[nuværendeArt.navn];
 
-                    let f_i = valgtArt.standardFormtal;
-                    if (gridData) {
-                        f_i = beregnFormtalFraGrid(tree.d, tree.h, gridData);
-                    }
+                    let f_i = nuværendeArt.standardFormtal;
+                    if (gridData) f_i = beregnFormtalFraGrid(tree.d, tree.h, gridData);
 
                     const v_i = g_i * tree.h * f_i;
-                    const hd_i = (tree.h * 100) / tree.d;
+                    g_sum += g_i; v_sum += v_i; hd_sum += ((tree.h * 100) / tree.d); gh_sum += (g_i * tree.h);
 
-                    g_sum += g_i;
-                    v_sum += v_i;
-                    hd_sum += hd_i;
-                    gh_sum += (g_i * tree.h);
-
-                    // Tæl volumen for den specifikke art
-                    if (!artVolumen[valgtArt.navn]) artVolumen[valgtArt.navn] = 0;
-                    artVolumen[valgtArt.navn] += v_i;
+                    if (!artVolumen[nuværendeArt.navn]) artVolumen[nuværendeArt.navn] = 0;
+                    artVolumen[nuværendeArt.navn] += v_i;
                 });
 
                 const G_ha = g_sum * opgangningsFaktor;
                 const V_ha = v_sum * opgangningsFaktor;
-                const V_total = V_ha * arealNum;
+                const Dg = Math.sqrt((g_sum / N_plot) / Math.PI) * 2 * 100; 
 
-                const g_mean = g_sum / N_plot; 
-                const Dg_meter = Math.sqrt(g_mean / Math.PI) * 2; 
-                const Dg = Dg_meter * 100; 
-
-                const HD_mean = hd_sum / N_plot;
-                const Hg = g_sum > 0 ? gh_sum / g_sum : 0;
-                const v_g = v_sum / N_plot;
-                const h_mean = trees.reduce((acc, t) => acc + t.h, 0) / N_plot;
-                const gnsFormtal = v_sum / (g_sum * h_mean);
-
-                // Beregn fordeling for blandingsskov (Sorteret efter volumen)
-                const speciesStats = Object.keys(artVolumen).map(artNavn => {
-                    const v_ha_art = artVolumen[artNavn] * opgangningsFaktor;
-                    const pct = v_sum > 0 ? (artVolumen[artNavn] / v_sum) * 100 : 0;
-                    return { art: artNavn, v_ha: v_ha_art, pct };
-                }).sort((a, b) => b.pct - a.pct);
+                const speciesStats = Object.keys(artVolumen).map(navn => ({
+                    art: navn, v_ha: artVolumen[navn] * opgangningsFaktor, pct: v_sum > 0 ? (artVolumen[navn] / v_sum) * 100 : 0
+                })).sort((a, b) => b.pct - a.pct);
 
                 setResultater({
-                    stamtalPrHa,
-                    G_ha,
-                    Dg,
-                    HD_forhold: HD_mean,
-                    volumenHa: V_ha,
-                    volumenTotal: V_total,
-                    gnsFormtal: gnsFormtal || 0,
-                    Hg,
-                    v_g,
-                    speciesStats
+                    stamtalPrHa: N_plot * opgangningsFaktor, G_ha, Dg, HD_forhold: hd_sum / N_plot,
+                    volumenHa: V_ha, volumenTotal: V_ha * arealNum,
+                    gnsFormtal: v_sum / (g_sum * (trees.reduce((acc, t) => acc + t.h, 0) / N_plot)) || 0,
+                    Hg: g_sum > 0 ? gh_sum / g_sum : 0, v_g: v_sum / N_plot, speciesStats
                 });
             }, [trees, radius, valgtTræIndeks, areal]);
 
-            // --- Eksport & Deling ---
+            // --- EKSPORTFUNKTIONER ---
             const genererResumeTekst = () => {
                 const navneArr = resultater.speciesStats.map(s => s.art);
                 const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
+                const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
                 
-                let tekst = `SKOVTAKSATION: ${hovedNavn}\n`;
-                tekst += `Areal: ${formatDK(areal)} ha  |  Prøveflade r=${formatDK(radius)}m\n`;
-                tekst += `--------------------------------\n`;
-                tekst += `NØGLETAL\n`;
-                tekst += `• Målte træer:    ${trees.length} stk\n`;
-                tekst += `• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n`;
-                tekst += `• Grundflade (G): ${formatDK(resultater.G_ha, 1)} m²/ha\n`;
-                tekst += `• Dg:             ${formatDK(resultater.Dg, 1)} cm\n`;
-                tekst += `• Hg:             ${formatDK(resultater.Hg, 1)} m\n`;
-                tekst += `• Middeltræ (Vg): ${formatDK(resultater.v_g, 3)} m³\n`;
-                tekst += `--------------------------------\n`;
-                tekst += `VEDMASSE\n`;
-                tekst += `• Pr. hektar:     ${formatDK(resultater.volumenHa, 1)} m³/ha\n`;
-                tekst += `• Total volumen:  ${formatDK(resultater.volumenTotal, 1)} m³\n`;
-                
+                let t = `SKOVTAKSATION: ${hovedNavn}\n`;
+                if(saveSkov || saveAfdeling) t += `Skov: ${saveSkov || '-'} | Afd: ${saveAfdeling || '-'} | Litra: ${saveLitra || '-'} | Alder: ${alder}\n`;
+                t += `Areal: ${formatDK(areal)} ha  |  Prøveflade r=${formatDK(radius)}m\n`;
+                t += `--------------------------------\nNØGLETAL\n• Målte træer:    ${trees.length} stk\n• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n• Grundflade (G): ${formatDK(resultater.G_ha, 1)} m²/ha\n• Dg / Hg:        ${formatDK(resultater.Dg, 1)} cm / ${formatDK(resultater.Hg, 1)} m\n• Middeltræ (Vg): ${formatDK(resultater.v_g, 3)} m³\n• H/D forhold:    ${formatDK(resultater.HD_forhold, 1)}\n--------------------------------\nVEDMASSE\n• Pr. hektar:     ${formatDK(resultater.volumenHa, 1)} m³/ha\n• Total volumen:  ${formatDK(resultater.volumenTotal, 1)} m³\n`;
                 if (resultater.speciesStats.length > 1) {
-                    tekst += `--------------------------------\n`;
-                    tekst += `ARTFORDELING (Vedmasse)\n`;
-                    resultater.speciesStats.forEach(stat => {
-                        tekst += `• ${stat.art}: ${formatDK(stat.pct, 1)} % (${formatDK(stat.v_ha, 1)} m³/ha)\n`;
-                    });
+                    t += `--------------------------------\nARTFORDELING\n`;
+                    resultater.speciesStats.forEach(s => t += `• ${s.art}: ${formatDK(s.pct, 1)} % (${formatDK(s.v_ha, 1)} m³/ha)\n`);
                 }
-                
-                tekst += `--------------------------------\n`;
-                tekst += `MÅLTE TRÆER (Art / Dia. / Højde):\n`;
-                [...trees].reverse().forEach((t, index) => {
-                    const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
-                    tekst += `  #${trees.length - index}: ${TRAEARTER[artIdx].navn} / ${formatDK(t.d)} cm / ${formatDK(t.h)} m\n`;
-                });
-                
-                return tekst;
-            };
-
-            const kopierTilUdklipsholder = () => {
-                const text = genererResumeTekst();
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed"; 
-                textArea.style.top = "0";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    setKopieret(true);
-                    setTimeout(() => setKopieret(false), 2000);
-                } catch (err) {
-                    console.error('Kunne ikke kopiere tekst', err);
-                }
-                document.body.removeChild(textArea);
-            };
-
-            const delResultat = async () => {
-                const text = genererResumeTekst();
-                if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: 'Skovtaksation Resultat',
-                            text: text,
-                        });
-                    } catch (err) {
-                        console.log('Deling afbrudt', err);
-                    }
-                } else {
-                    kopierTilUdklipsholder();
-                }
+                return t;
             };
 
             const downloadCSV = () => {
-                let csvContent = "\uFEFF"; 
+                // Direktiv til Excel/OneDrive + UTF-8 BOM
+                let csv = "sep=;\n\uFEFF"; 
                 const navneArr = resultater.speciesStats.map(s => s.art);
                 const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
+                const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
+
+                csv += "STAMDATA & METADATA\n";
+                csv += `Skov / Ejendom;${saveSkov || 'Ikke oplyst'}\n`;
+                csv += `Afdeling;${saveAfdeling || 'Ikke oplyst'}\n`;
+                csv += `Litra;${saveLitra || 'Ikke oplyst'}\n`;
+                csv += `Plantningsår;${saveAarstal || 'Ikke oplyst'}\n`;
+                csvContent = csv += `Bevoksningens alder;${alder}\n`;
+                csv += `Skovtype / Hovedart;${hovedNavn}\n`;
+                csv += `Prøveflade radius (m);${formatDK(radius)}\n`;
+                csv += `Totalt areal (ha);${formatDK(areal)}\n\n`;
                 
-                csvContent += "BESTANDSDATA\n";
-                csvContent += `Skovtype;${hovedNavn}\n`;
-                csvContent += `Radius (m);${formatDK(radius)}\n`;
-                csvContent += `Areal (ha);${formatDK(areal)}\n`;
-                csvContent += `Stamtal (stk/ha);${Math.round(resultater.stamtalPrHa)}\n`;
-                csvContent += `Grundflade (m2/ha);${formatDK(resultater.G_ha, 2)}\n`;
-                csvContent += `Dg (cm);${formatDK(resultater.Dg, 2)}\n`;
-                csvContent += `Hg (m);${formatDK(resultater.Hg, 2)}\n`;
-                csvContent += `Middeltræ (m3);${formatDK(resultater.v_g, 3)}\n`;
-                csvContent += `Volumen (m3/ha);${formatDK(resultater.volumenHa, 2)}\n`;
-                csvContent += `Total Volumen (m3);${formatDK(resultater.volumenTotal, 2)}\n\n`;
+                csv += "BEREGNEDE NØGLETAL (HA-NIVEAU)\n";
+                csv += `Antal opmålte træer;${trees.length} stk\n`;
+                csv += `Stamtal (N);${Math.round(resultater.stamtalPrHa)} stk/ha\n`;
+                csv += `Grundflade (G);${formatDK(resultater.G_ha, 2)} m²/ha\n`;
+                csv += `Grundflade middeldiameter (Dg);${formatDK(resultater.Dg, 2)} cm\n`;
+                csv += `Grundflade middelhøjde (Hg);${formatDK(resultater.Hg, 2)} m\n`;
+                csv += `Middeltræ volumen (Vg);${formatDK(resultater.v_g, 3)} m³\n`;
+                csv += `Gennemsnitligt H/D forhold;${formatDK(resultater.HD_forhold, 1)}\n`;
+                csv += `Gennemsnitligt formtal;${formatDK(resultater.gnsFormtal, 3)}\n`;
+                csv += `Volumen pr. hektar;${formatDK(resultater.volumenHa, 2)} m³/ha\n`;
+                csv += `Total volumen for hele arealet;${formatDK(resultater.volumenTotal, 2)} m³\n\n`;
                 
                 if (resultater.speciesStats.length > 1) {
-                    csvContent += "ARTFORDELING (VEDMASSE)\n";
-                    csvContent += "Art;Procent (%);Volumen (m3/ha)\n";
-                    resultater.speciesStats.forEach(stat => {
-                        csvContent += `${stat.art};${formatDK(stat.pct, 2)};${formatDK(stat.v_ha, 2)}\n`;
-                    });
-                    csvContent += "\n";
+                    csv += "ARTFORDELING (VEDMASSE)\n";
+                    csv += "Træart;Andel (%);Volumen (m³/ha)\n";
+                    resultater.speciesStats.forEach(s => csv += `${s.art};${formatDK(s.pct, 2)};${formatDK(s.v_ha, 2)}\n`);
+                    csv += "\n";
                 }
                 
-                csvContent += "MÅLTE TRÆER\n";
-                csvContent += "Træ Nr;Art;Diameter (cm);Højde (m)\n";
+                csv += "MÅLTE ENKELTTRÆER (RÅDATA TIL ANALYSE)\n";
+                csv += "Træ nr.;Træart;Diameter d (cm);Højde h (m);Formtal f (interpoleret);Volumen v (m³);H/D forhold\n";
+                
                 [...trees].reverse().forEach((t, index) => {
                     const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
-                    csvContent += `${trees.length - index};${TRAEARTER[artIdx].navn};${formatDK(t.d)};${formatDK(t.h)}\n`;
+                    const nuværendeArt = TRAEARTER[artIdx];
+                    const gridData = FORMTAL_GRIDS[nuværendeArt.navn];
+                    
+                    let f_i = nuværendeArt.standardFormtal;
+                    if (gridData) f_i = beregnFormtalFraGrid(t.d, t.h, gridData);
+                    
+                    const v_i = Math.PI * Math.pow((t.d / 100) / 2, 2) * t.h * f_i;
+                    
+                    csv += `${trees.length - index};${nuværendeArt.navn};${formatDK(t.d, 1)};${formatDK(t.h, 1)};${formatDK(f_i, 4)};${formatDK(v_i, 4)};${formatDK((t.h * 100) / t.d, 1)}\n`;
                 });
 
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `skovtaksation_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", `taksation_${saveSkov||'data'}_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
             return (
@@ -557,21 +432,21 @@
                                     <TreePine className="w-8 h-8" />
                                     Vedmasseberegner
                                 </h1>
-                                <p className="text-green-100 text-sm mt-1">Prøvefladetaksation</p>
+                                <p className="text-green-100 text-sm mt-1">Professionel prøvefladetaksation</p>
                             </div>
                             <Calculator className="w-8 h-8 opacity-50 hidden sm:block" />
                         </div>
 
                         <div className="p-6 grid lg:grid-cols-2 gap-8">
                             
-                            {/* VENSTRE KOLONNE: Indstillinger & Indtastning */}
+                            {/* VENSTRE KOLONNE */}
                             <div className="space-y-8">
                                 
-                                {/* Sektion 1: Område */}
+                                {/* Sektion 1: Område & Bestand (Udvidet med stamdata direkte på forsiden) */}
                                 <div className="space-y-4">
                                     <h2 className="text-lg font-semibold border-b pb-2 border-stone-200 flex items-center gap-2 text-green-900">
                                         <CircleDashed className="w-5 h-5" />
-                                        Område & Bestand
+                                        Område & Stamdata
                                     </h2>
                                     
                                     <div className="grid grid-cols-2 gap-4">
@@ -583,19 +458,34 @@
                                             <label className="text-xs font-bold uppercase text-green-800 mb-1">Totalt Areal (ha)</label>
                                             <input type="number" step="0.1" value={areal} onChange={(e) => setAreal(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none" placeholder="F.eks. 1.5" />
                                         </div>
+                                        <div className="flex flex-col col-span-2 sm:col-span-1">
+                                            <label className="text-xs font-bold uppercase text-stone-600 mb-1">Skov / Ejendom</label>
+                                            <input type="text" value={saveSkov} onChange={(e) => setSaveSkov(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none" placeholder="Navn på skoven" />
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 col-span-2 sm:col-span-1">
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1 block text-center">Afd.</label>
+                                                <input type="text" value={saveAfdeling} onChange={(e) => setSaveAfdeling(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none w-full text-center" placeholder="Afd" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1 block text-center">Litra</label>
+                                                <input type="text" value={saveLitra} onChange={(e) => setSaveLitra(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none w-full text-center" placeholder="Litr" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1 block text-center">Plantet</label>
+                                                <input type="number" value={saveAarstal} onChange={(e) => setSaveAarstal(e.target.value)} className="p-2 border border-stone-300 rounded focus:ring-2 focus:ring-green-500 bg-stone-50 outline-none w-full text-center" placeholder="År" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Sektion 2: Træliste */}
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-end border-b pb-2 border-stone-200">
-                                        <h2 className="text-lg font-semibold flex items-center gap-2 text-stone-800">
-                                            <ListTree className="w-5 h-5 text-green-700" />
-                                            Målte Træer ({trees.length})
-                                        </h2>
-                                    </div>
+                                    <h2 className="text-lg font-semibold flex items-center gap-2 text-stone-800 border-b pb-2">
+                                        <ListTree className="w-5 h-5 text-green-700" />
+                                        Målte Træer ({trees.length})
+                                    </h2>
 
-                                    {/* Hurtig indtastning */}
                                     <form onSubmit={tilfoejTrae} className="flex flex-col gap-2 bg-green-50 p-3 rounded-lg border border-green-200 shadow-sm">
                                         <div className="flex flex-col">
                                             <label className="text-xs font-bold text-green-900 mb-1 block">Træart</label>
@@ -606,39 +496,17 @@
                                         <div className="flex gap-2 items-end mt-1">
                                             <div className="flex-1 flex gap-1">
                                                 <div className="w-1/2">
-                                                    <label className="text-xs font-bold text-green-900 mb-1 block" title="Første klupning">Dia 1 (cm)</label>
-                                                    <input 
-                                                        ref={dInputRef}
-                                                        type="number" 
-                                                        step="0.1"
-                                                        value={nyDiameter1} 
-                                                        onChange={(e) => setNyDiameter1(e.target.value)} 
-                                                        placeholder="d1"
-                                                        className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                                    />
+                                                    <label className="text-xs font-bold text-green-900 mb-1 block">d1 (cm)</label>
+                                                    <input ref={dInputRef} type="number" step="0.1" value={nyDiameter1} onChange={(e) => setNyDiameter1(e.target.value)} placeholder="d1" className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none" />
                                                 </div>
                                                 <div className="w-1/2">
-                                                    <label className="text-xs font-bold text-green-900 mb-1 block" title="Anden klupning (valgfri)">Dia 2 (cm)</label>
-                                                    <input 
-                                                        type="number" 
-                                                        step="0.1"
-                                                        value={nyDiameter2} 
-                                                        onChange={(e) => setNyDiameter2(e.target.value)} 
-                                                        placeholder="d2"
-                                                        className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                                    />
+                                                    <label className="text-xs font-bold text-green-900 mb-1 block">d2 (cm)</label>
+                                                    <input type="number" step="0.1" value={nyDiameter2} onChange={(e) => setNyDiameter2(e.target.value)} placeholder="d2" className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none" />
                                                 </div>
                                             </div>
                                             <div className="flex-1">
-                                                <label className="text-xs font-bold text-green-900 mb-1 block">Højde (m)</label>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.1"
-                                                    value={nyHoejde} 
-                                                    onChange={(e) => setNyHoejde(e.target.value)} 
-                                                    placeholder="h"
-                                                    className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none"
-                                                />
+                                                <label className="text-xs font-bold text-green-900 mb-1 block">højde (m)</label>
+                                                <input type="number" step="0.1" value={nyHoejde} onChange={(e) => setNyHoejde(e.target.value)} placeholder="h" className="w-full p-2 border border-green-300 rounded focus:ring-2 focus:ring-green-500 outline-none" />
                                             </div>
                                             <button type="submit" disabled={(!nyDiameter1 && !nyDiameter2) || !nyHoejde} className="bg-green-700 text-white p-2 rounded hover:bg-green-800 disabled:opacity-50 transition-colors h-[42px] px-4 flex items-center gap-1">
                                                 <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Tilføj</span>
@@ -646,7 +514,6 @@
                                         </div>
                                     </form>
 
-                                    {/* Listen med træer */}
                                     <div className="bg-stone-50 border rounded-lg max-h-64 overflow-y-auto">
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-stone-200 sticky top-0">
@@ -660,7 +527,7 @@
                                             </thead>
                                             <tbody>
                                                 {trees.length === 0 ? (
-                                                    <tr><td colSpan="5" className="text-center p-4 text-stone-400 italic">Begynd at taste træer ovenfor for at starte.</td></tr>
+                                                    <tr><td colSpan="5" className="text-center p-4 text-stone-400 italic">Begynd at indtaste træer.</td></tr>
                                                 ) : (
                                                     [...trees].reverse().map((t, index) => {
                                                         const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
@@ -682,11 +549,10 @@
                                             </tbody>
                                         </table>
                                     </div>
-
                                 </div>
                             </div>
 
-                            {/* HØJRE KOLONNE: Resultater */}
+                            {/* HØJRE KOLONNE: RESULTATER */}
                             <div className="bg-stone-800 text-stone-100 rounded-xl p-6 shadow-xl h-fit sticky top-8 border border-stone-600">
                                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-green-400 border-b border-stone-600 pb-3">
                                     <Activity className="w-6 h-6" />
@@ -694,61 +560,52 @@
                                 </h2>
                                 
                                 <div className="space-y-6">
-                                    
-                                    {/* Nøgletal Grid */}
                                     <div className="grid grid-cols-2 gap-4 bg-stone-700/50 p-4 rounded-lg">
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade.Mid.Dia (Dg)</p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">Grundflade.Mid.Dia (Dg)</p>
                                             <p className="text-2xl font-bold text-white">{formatDK(resultater.Dg, 1)} <span className="text-sm font-normal text-stone-400">cm</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Grundflademiddelhøjde">Grundflade.Mid.Høj (Hg)</p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">Grundflade.Mid.Høj (Hg)</p>
                                             <p className="text-2xl font-bold text-white">{formatDK(resultater.Hg, 1)} <span className="text-sm font-normal text-stone-400">m</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Grundflade (G)</p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">Grundflade (G)</p>
                                             <p className="text-2xl font-bold text-white">{formatDK(resultater.G_ha, 1)} <span className="text-sm font-normal text-stone-400">m²/ha</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1">Stamtal (N)</p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">Stamtal (N)</p>
                                             <p className="text-2xl font-bold text-white">{Math.round(resultater.stamtalPrHa)} <span className="text-sm font-normal text-stone-400">stk/ha</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Middelstammens volumen">Middeltræ (Vg)</p>
-                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.v_g, 1)} <span className="text-sm font-normal text-stone-400">m³</span></p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">Middeltræ (Vg)</p>
+                                            <p className="text-2xl font-bold text-white">{formatDK(resultater.v_g, 3)} <span className="text-sm font-normal text-stone-400">m³</span></p>
                                         </div>
                                         <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-wider mb-1" title="Højde/Diameter Forhold">H/D Forhold</p>
-                                            <p className={`text-2xl font-bold ${resultater.HD_forhold > 80 ? 'text-orange-400' : 'text-green-300'}`}>
-                                                {formatDK(resultater.HD_forhold, 1)}
-                                            </p>
+                                            <p className="text-stone-400 text-xs uppercase mb-1">H/D Forhold</p>
+                                            <p className={`text-2xl font-bold ${resultater.HD_forhold > 80 ? 'text-orange-400' : 'text-green-300'}`}>{formatDK(resultater.HD_forhold, 1)}</p>
                                         </div>
                                     </div>
 
-                                    {/* Formtal info */}
                                     <div className="flex justify-between items-center text-sm bg-stone-900/50 p-3 rounded">
-                                        <span className="text-stone-400">
-                                            Gns. formtal:
-                                        </span>
+                                        <span className="text-stone-400">Gns. formtal (f):</span>
                                         <span className="font-mono text-yellow-400">{formatDK(resultater.gnsFormtal, 3)}</span>
                                     </div>
 
                                     <div className="h-px bg-stone-600 w-full"></div>
 
-                                    {/* Hovedresultater */}
                                     <div className="flex flex-col gap-4">
                                         <div className="text-center">
-                                            <p className="text-stone-400 text-sm uppercase tracking-widest mb-1">Volumen pr. Hektar</p>
+                                            <p className="text-stone-400 text-sm uppercase mb-1">Volumen pr. Hektar</p>
                                             <p className="text-4xl font-black text-white">{formatDK(resultater.volumenHa, 1)} m³</p>
                                         </div>
-                                        
                                         <div className="text-center bg-green-900/40 border border-green-800/50 p-4 rounded-xl mt-2">
-                                            <p className="text-green-300/80 text-xs uppercase tracking-widest mb-1">Total Volumen for {formatDK(areal)} ha</p>
+                                            <p className="text-green-300/80 text-xs uppercase mb-1">Total Volumen ({formatDK(areal)} ha)</p>
                                             <p className="text-5xl font-black text-green-400 drop-shadow-md">{formatDK(resultater.volumenTotal, 1)} m³</p>
                                         </div>
                                     </div>
 
-                                    {/* Blandingsfordeling (Vises kun hvis der er flere arter) */}
+                                    {/* Blandingsfordeling */}
                                     {resultater.speciesStats && resultater.speciesStats.length > 1 && (
                                         <div className="mt-4 bg-stone-700/40 p-4 rounded-lg border border-stone-600">
                                             <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Blandingsfordeling (Vedmasse)</h3>
@@ -766,52 +623,44 @@
                                         </div>
                                     )}
 
-                                    {/* Håndtering af Prøveflader */}
+                                    {/* Knapper og Styring */}
                                     <div className="pt-4 border-t border-stone-600 mt-6 space-y-3">
                                         <div className="flex gap-2">
-                                            <button onClick={() => setIsSaveModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-500">
-                                                <Save className="w-4 h-4 text-green-400" /> Gem prøveflade
+                                            <button onClick={() => setIsSaveModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm border border-stone-500">
+                                                <Save className="w-4 h-4 text-green-400" /> Gem flade
                                             </button>
-                                            <button onClick={() => setIsLoadModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-500">
+                                            <button onClick={() => setIsLoadModalOpen(true)} className="flex-1 bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm border border-stone-500">
                                                 <FolderOpen className="w-4 h-4 text-yellow-400" /> Åbn gemte
                                             </button>
                                         </div>
 
-                                        {/* Eksport & Værktøjer */}
                                         <div className="flex gap-2">
-                                            <button onClick={kopierTilUdklipsholder} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
+                                            <button onClick={() => { const text = genererResumeTekst(); const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); setKopieret(true); setTimeout(() => setKopieret(false), 2000); }} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm border border-stone-700">
                                                 {kopieret ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                             </button>
-                                            <button onClick={delResultat} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
+                                            <button onClick={async () => { const text = genererResumeTekst(); if (navigator.share) { try { await navigator.share({ title: 'Taksationsresultat', text }); } catch (e) {} } else { dInputRef.current?.focus(); } }} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm border border-stone-700">
                                                 <Share2 className="w-4 h-4" /> 
                                             </button>
-                                            <button onClick={downloadCSV} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors border border-stone-700">
-                                                <Download className="w-4 h-4" /> 
+                                            <button onClick={downloadCSV} className="flex-1 bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg flex items-center justify-center gap-2 text-sm border border-stone-700" title="Download optimeret CSV til Excel/OneDrive">
+                                                <Download className="w-4 h-4 text-green-400" /> <span className="font-bold text-xs uppercase text-green-400">Excel</span>
                                             </button>
                                         </div>
 
                                         <div className="flex gap-2">
                                             {visRydBekræft ? (
                                                 <div className="flex-1 flex gap-1">
-                                                    <button onClick={rydAlt} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-2 rounded-lg text-sm font-bold transition-colors">
-                                                        Slet alt!
-                                                    </button>
-                                                    <button onClick={() => setVisRydBekræft(false)} className="flex-1 bg-stone-600 hover:bg-stone-500 text-white p-2 rounded-lg text-sm transition-colors">
-                                                        Fortryd
-                                                    </button>
+                                                    <button onClick={rydAlt} className="flex-1 bg-red-600 hover:bg-red-500 text-white p-2 rounded-lg text-sm font-bold">Slet alt!</button>
+                                                    <button onClick={() => setVisRydBekræft(false)} className="flex-1 bg-stone-600 hover:bg-stone-500 text-white p-2 rounded-lg text-sm">Fortryd</button>
                                                 </div>
                                             ) : (
-                                                <button onClick={() => setVisRydBekræft(true)} className="flex-1 bg-stone-800 hover:bg-red-900/50 text-red-400 border border-stone-700 p-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors">
+                                                <button onClick={() => setVisRydBekræft(true)} className="flex-1 bg-stone-800 hover:bg-red-900/50 text-red-400 border border-stone-700 p-2 rounded-lg flex items-center justify-center gap-2 text-sm">
                                                     <RefreshCw className="w-4 h-4" /> Nulstil nuværende
                                                 </button>
                                             )}
                                         </div>
-                                        <p className="text-[10px] text-stone-500 text-center uppercase tracking-widest pt-2">Data gemmes automatisk på enheden</p>
                                     </div>
-
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
@@ -820,133 +669,65 @@
                         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
-                                        <Save className="w-5 h-5" /> Gem prøveflade
-                                    </h3>
-                                    <button onClick={() => setIsSaveModalOpen(false)} className="text-stone-400 hover:text-stone-700">
-                                        <XIcon className="w-5 h-5" />
-                                    </button>
+                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2"><Save className="w-5 h-5" /> Gem prøveflade</h3>
+                                    <button onClick={() => setIsSaveModalOpen(false)} className="text-stone-400 hover:text-stone-700"><XIcon className="w-5 h-5" /></button>
                                 </div>
-
-                                {/* Menu-tabs */}
                                 <div className="flex gap-2 mb-4 bg-stone-100 p-1 rounded-lg">
-                                    <button 
-                                        className={`flex-1 p-2 rounded-md text-sm transition-colors ${saveMode === 'structured' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500 hover:text-stone-800'}`} 
-                                        onClick={() => setSaveMode('structured')}
-                                    >
-                                        Standard navngivning
-                                    </button>
-                                    <button 
-                                        className={`flex-1 p-2 rounded-md text-sm transition-colors ${saveMode === 'custom' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500 hover:text-stone-800'}`} 
-                                        onClick={() => setSaveMode('custom')}
-                                    >
-                                        Vilkårligt navn
-                                    </button>
+                                    <button className={`flex-1 p-2 rounded-md text-sm ${saveMode === 'structured' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500'}`} onClick={() => setSaveMode('structured')}>Autonavn (fra forsiden)</button>
+                                    <button className={`flex-1 p-2 rounded-md text-sm ${saveMode === 'custom' ? 'bg-white shadow font-bold text-green-800' : 'text-stone-500'}`} onClick={() => setSaveMode('custom')}>Vilkårligt navn</button>
                                 </div>
-
                                 {saveMode === 'structured' ? (
-                                    <div className="space-y-3 mb-6">
-                                        <p className="text-xs text-stone-500 mb-2">Træart/Blandingsskov indsættes automatisk i titlen. Udfyld de felter du har brug for:</p>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="flex flex-col">
-                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Årstal</label>
-                                                <input type="number" value={saveAarstal} onChange={(e) => setSaveAarstal(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Litra</label>
-                                                <input type="text" value={saveLitra} onChange={(e) => setSaveLitra(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Afdeling</label>
-                                                <input type="text" value={saveAfdeling} onChange={(e) => setSaveAfdeling(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
-                                            </div>
-                                            <div className="flex flex-col col-span-2">
-                                                <label className="text-xs font-bold uppercase text-stone-600 mb-1">Skov</label>
-                                                <input type="text" value={saveSkov} onChange={(e) => setSaveSkov(e.target.value)} className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <p className="text-xs text-stone-600 mb-6 bg-stone-50 p-3 rounded border">
+                                        Genererer automatisk navnet baseret på din forside-indtastning: <br/>
+                                        <span className="font-bold text-green-800">
+                                            {TRAEARTER[valgtTræIndeks].navn} {saveSkov ? `, ${saveSkov}` : ''} {saveAfdeling ? `, afd. ${saveAfdeling}` : ''}
+                                        </span>
+                                    </p>
                                 ) : (
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex flex-col">
-                                            <label className="text-xs font-bold uppercase text-stone-600 mb-1">Navn på prøveflade</label>
-                                            <input type="text" value={saveCustomName} onChange={(e) => setSaveCustomName(e.target.value)} placeholder="Skriv dit eget navn..." className="p-2 border rounded bg-stone-50 focus:ring-2 focus:ring-green-500 outline-none" />
-                                        </div>
+                                    <div className="flex flex-col mb-6">
+                                        <label className="text-xs font-bold uppercase text-stone-600 mb-1">Eget navn på prøveflade</label>
+                                        <input type="text" value={saveCustomName} onChange={(e) => setSaveCustomName(e.target.value)} placeholder="Skriv et navn..." className="p-2 border rounded bg-stone-50 outline-none focus:ring-2 focus:ring-green-500" />
                                     </div>
                                 )}
-
-                                <button onClick={handleSavePlot} className="w-full bg-green-700 hover:bg-green-600 text-white font-bold p-3 rounded-lg flex justify-center items-center gap-2 transition-colors">
-                                    Gem nu
-                                </button>
+                                <button onClick={handleSavePlot} className="w-full bg-green-700 hover:bg-green-600 text-white font-bold p-3 rounded-lg flex justify-center items-center gap-2">Gem nu</button>
                             </div>
                         </div>
                     )}
 
-                    {/* MODAL: Åbn Gemte Prøveflader */}
+                    {/* MODAL: Åbn Gemte */}
                     {isLoadModalOpen && (
                         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col max-h-[90vh]">
                                 <div className="flex justify-between items-center mb-2 border-b pb-2">
-                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
-                                        <FolderOpen className="w-5 h-5" /> Åbn gemte
-                                    </h3>
-                                    <button onClick={closeLoadModal} className="text-stone-400 hover:text-stone-700">
-                                        <XIcon className="w-5 h-5" />
-                                    </button>
+                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2"><FolderOpen className="w-5 h-5" /> Åbn gemte</h3>
+                                    <button onClick={closeLoadModal} className="text-stone-400 hover:text-stone-700"><XIcon className="w-5 h-5" /></button>
                                 </div>
-                                
-                                {/* Toggle Merge Mode */}
                                 {savedPlots.length > 0 && (
-                                    <div className="flex justify-between items-center mb-4 bg-stone-50 p-2 rounded-lg border border-stone-200">
-                                        <p className="text-xs text-stone-600 font-medium">Vælg handling:</p>
-                                        <button 
-                                            onClick={() => {
-                                                setMergeMode(!mergeMode);
-                                                setSelectedForMerge([]);
-                                            }} 
-                                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${mergeMode ? 'bg-stone-700 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
-                                        >
-                                            <Layers className="w-3 h-3" />
-                                            {mergeMode ? 'Afbryd sammenlægning' : 'Sammenlæg flere'}
+                                    <div className="flex justify-between items-center mb-4 bg-stone-50 p-2 rounded-lg border">
+                                        <button onClick={() => { setMergeMode(!mergeMode); setSelectedForMerge([]); }} className={`text-xs font-bold px-3 py-1.5 rounded flex items-center gap-1 ${mergeMode ? 'bg-stone-700 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}>
+                                            <Layers className="w-3 h-3" /> {mergeMode ? 'Afbryd sammenlægning' : 'Sammenlæg flere flader'}
                                         </button>
                                     </div>
                                 )}
-
-                                <div className="overflow-y-auto space-y-2 mb-4 flex-1 pr-1">
+                                <div className="overflow-y-auto space-y-2 mb-4 flex-1">
                                     {savedPlots.length === 0 ? (
-                                        <p className="text-center p-4 text-stone-500 italic">Du har ikke gemt nogen prøveflader endnu.</p>
+                                        <p className="text-center p-4 text-stone-500 italic">Ingen gemte prøveflader endnu.</p>
                                     ) : (
                                         savedPlots.slice().reverse().map(plot => {
                                             const isSelected = selectedForMerge.includes(plot.id);
                                             return (
-                                                <div 
-                                                    key={plot.id} 
-                                                    onClick={() => mergeMode && toggleMergeSelection(plot.id)}
-                                                    className={`border p-3 rounded-lg flex flex-col gap-2 transition-colors cursor-pointer ${mergeMode && isSelected ? 'border-green-500 bg-green-50' : 'border-stone-200 hover:bg-stone-50'}`}
-                                                >
+                                                <div key={plot.id} onClick={() => mergeMode && toggleMergeSelection(plot.id)} className={`border p-3 rounded-lg flex flex-col gap-2 cursor-pointer ${mergeMode && isSelected ? 'border-green-500 bg-green-50' : 'hover:bg-stone-50'}`}>
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <p className="font-semibold text-stone-800 text-sm leading-tight">{plot.name}</p>
-                                                            <p className="text-xs text-stone-500 mt-1">Gemt d. {plot.date} • {plot.data.trees.length} træer • Areal: {plot.data.areal || 0} ha</p>
+                                                            <p className="text-xs text-stone-500 mt-1">Dato: {plot.date} • {plot.data.trees.length} træer</p>
                                                         </div>
-                                                        {mergeMode && (
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={isSelected}
-                                                                readOnly
-                                                                className="w-4 h-4 text-green-600 mt-1 pointer-events-none"
-                                                            />
-                                                        )}
+                                                        {mergeMode && <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 text-green-600 mt-1 pointer-events-none" />}
                                                     </div>
-                                                    
                                                     {!mergeMode && (
                                                         <div className="flex gap-2 mt-1">
-                                                            <button onClick={(e) => { e.stopPropagation(); loadPlot(plot); }} className="flex-1 bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold p-2 rounded transition-colors">
-                                                                Åbn
-                                                            </button>
-                                                            <button onClick={(e) => { e.stopPropagation(); deletePlot(plot.id); }} className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded transition-colors" title="Slet">
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); loadPlot(plot); }} className="flex-1 bg-green-100 text-green-800 text-xs font-bold p-2 rounded">Åbn</button>
+                                                            <button onClick={(e) => { e.stopPropagation(); deletePlot(plot.id); }} className="bg-red-50 text-red-600 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -954,20 +735,12 @@
                                         })
                                     )}
                                 </div>
-
                                 {mergeMode ? (
-                                    <button 
-                                        onClick={executeMerge} 
-                                        disabled={selectedForMerge.length < 2}
-                                        className={`w-full font-bold p-3 rounded-lg transition-colors flex justify-center items-center gap-2 ${selectedForMerge.length >= 2 ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-stone-200 text-stone-400 cursor-not-allowed'}`}
-                                    >
-                                        <Layers className="w-5 h-5" />
-                                        Sammenlæg og indlæs ({selectedForMerge.length} valgt)
+                                    <button onClick={executeMerge} disabled={selectedForMerge.length < 2} className={`w-full font-bold p-3 rounded-lg flex justify-center items-center gap-2 ${selectedForMerge.length >= 2 ? 'bg-green-700 text-white' : 'bg-stone-200 text-stone-400'}`}>
+                                        <Layers className="w-5 h-5" /> Sammenlæg ({selectedForMerge.length} valgt)
                                     </button>
                                 ) : (
-                                    <button onClick={closeLoadModal} className="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold p-3 rounded-lg transition-colors">
-                                        Luk
-                                    </button>
+                                    <button onClick={closeLoadModal} className="w-full bg-stone-200 text-stone-800 font-bold p-3 rounded-lg">Luk</button>
                                 )}
                             </div>
                         </div>
@@ -979,14 +752,9 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<SkovBeregner />);
 
-        // --- PWA Service Worker Registrering (Til Offline Brug) ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('App er klar til offline brug!');
-                }).catch(err => {
-                    console.log('ServiceWorker fejl:', err);
-                });
+                navigator.serviceWorker.register('./sw.js').then(() => console.log('Offline klar!')).catch(e => console.log(e));
             });
         }
     </script>
