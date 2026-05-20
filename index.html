@@ -247,10 +247,10 @@
                 setValgtTræIndeks(plot.data.valgtTræIndeks); setTrees(plot.data.trees);
                 // Gammel data sikring: Har dataen ikke et flade-antal gemt, sættes den til 1
                 setAntalFlader(plot.data.antalFlader || 1);
-                if(plot.data.saveSkov !== undefined) setSaveSkov(plot.data.saveSkov);
-                if(plot.data.saveAfdeling !== undefined) setSaveAfdeling(plot.data.saveAfdeling);
-                if(plot.data.saveLitra !== undefined) setSaveLitra(plot.data.saveLitra);
-                if(plot.data.saveAarstal !== undefined) setSaveAarstal(plot.data.saveAarstal);
+                setSaveSkov(plot.data.saveSkov || "");
+                setSaveAfdeling(plot.data.saveAfdeling || "");
+                setSaveLitra(plot.data.saveLitra || "");
+                setSaveAarstal(plot.data.saveAarstal || "");
                 closeLoadModal();
             };
 
@@ -426,8 +426,8 @@
                     }
                     
                     // --- CSV TRÆDATA ---
-                    csv += "MÅLTE ENKELTTRÆER (RÅDATA TIL ANALYSE)\n";
-                    csv += "Træ nr.;Træart;Diameter d (cm);Højde h (m);Formtal f (interpoleret);Volumen v (m³);H/D forhold\n";
+                    csv += "MÅLTE ENKELTTRÆER\n";
+                    csv += "Træ nr.;Træart;Diameter d (cm);Højde h (m);Formtal;Volumen (m3);H/D forhold\n";
                     
                     [...trees].reverse().forEach((t, index) => {
                         const artIdx = t.artIndeks !== undefined ? t.artIndeks : valgtTræIndeks;
@@ -462,7 +462,7 @@
                     let baseName = nameParts.length > 0 ? nameParts.join('_') : 'data';
                     baseName = baseName.replace(/_+/g, '_'); // Fjerner eventuelle dobbelte understreger
                     
-                    link.download = `taksation_${baseName}_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.download = `taksation_${baseName}.csv`;
                     
                     document.body.appendChild(link);
                     link.click();
