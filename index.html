@@ -245,7 +245,7 @@
             const loadPlot = (plot) => {
                 setRadius(plot.data.radius); setAreal(plot.data.areal);
                 setValgtTræIndeks(plot.data.valgtTræIndeks); setTrees(plot.data.trees);
-                // Sikkerhed hvis man looper gamle data
+                // Gammel data sikring: Har dataen ikke et flade-antal gemt, sættes den til 1
                 setAntalFlader(plot.data.antalFlader || 1);
                 if(plot.data.saveSkov !== undefined) setSaveSkov(plot.data.saveSkov);
                 if(plot.data.saveAfdeling !== undefined) setSaveAfdeling(plot.data.saveAfdeling);
@@ -275,7 +275,7 @@
                         const r = parseFloat(plot.data.radius ? plot.data.radius.toString().replace(',', '.') : '0');
                         if (!isNaN(r) && r > 0) totalSampleArea += Math.PI * Math.pow(r, 2);
                         
-                        // Meget vigtigt for at bevare det oprindelige flade-tal
+                        // Sikring for gamle data. Har fladen ikke info, tæller den som 1 flade i puljen.
                         totalPlots += (plot.data.antalFlader || 1);
 
                         if (!firstAreal && plot.data.areal) firstAreal = plot.data.areal;
@@ -293,7 +293,7 @@
                     }
                 });
 
-                // Radius-beregning for det samlede matematiske areal (nødvendigt for udregning pr hektar i hovedmotoren)
+                // Den matematiske radius for det samlede areal (gemmes usynligt i baggrunden for korrekt Hektar-udregning)
                 setRadius(formatDK(totalSampleArea > 0 ? Math.sqrt(totalSampleArea / Math.PI) : 0, 2));
                 setAntalFlader(totalPlots);
                 setAreal(firstAreal); setSaveSkov(firstSkov); setSaveAfdeling(firstAfd); setSaveLitra(firstLitra); setSaveAarstal(firstAar);
@@ -392,7 +392,7 @@
                         gnsRadius = Math.sqrt(Math.pow(radNum, 2) / antalFlader);
                     }
 
-                    // --- CSV STAMDATA (Clean og flot opsætning som i den roste version) ---
+                    // --- CSV STAMDATA ---
                     csv += "STAMDATA & METADATA\n";
                     csv += `Skov / Ejendom;${saveSkov || 'Ikke oplyst'}\n`;
                     csv += `Afdeling;${saveAfdeling || 'Ikke oplyst'}\n`;
@@ -405,7 +405,7 @@
                     csv += `Totalt areal (ha);${formatDK(areal)}\n\n`;
                     
                     // --- CSV NØGLETAL ---
-                    csv += "BEREGNEDE NØGLETAL (HA-NIVEAU)\n";
+                    csv += "BEREGNEDE NØGLETAL\n";
                     csv += `Antal opmålte træer;${trees.length} stk\n`;
                     csv += `Stamtal (N);${Math.round(resultater.stamtalPrHa || 0)} stk/ha\n`;
                     csv += `Grundflade (G);${formatDK(resultater.G_ha, 2)} m²/ha\n`;
@@ -443,7 +443,7 @@
                         csv += `${trees.length - index};${nuværendeArt.navn};${formatDK(t.d, 1)};${formatDK(t.h, 1)};${formatDK(f_i, 4)};${formatDK(v_i, 4)};${formatDK(hd_forhold, 1)}\n`;
                     });
 
-                    // Den sikre, "binære" BOM-løsning som tvinger Excel til at læse danske tegn korrekt
+                    // Den skudsikre, binære BOM-løsning for Excel og æøå.
                     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
                     const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8' });
                     
@@ -451,9 +451,18 @@
                     const link = document.createElement("a");
                     link.href = url;
                     
-                    // Fjern ulovlige tegn fra skovnavn til filnavnet
-                    const safeSkovNavn = (saveSkov || 'skov').toString().replace(/[^a-z0-9æøå]/gi, '_').toLowerCase();
-                    link.download = `taksation_${safeSkovNavn}.csv`;
+                    // Dynamisk filnavn der samler al data
+                    const safePart = (str) => (str || '').toString().replace(/[^a-z0-9æøå]/gi, '_').toLowerCase();
+                    const nameParts = [];
+                    if (saveSkov) nameParts.push(safePart(saveSkov));
+                    if (saveAfdeling) nameParts.push("afd_" + safePart(saveAfdeling));
+                    if (saveLitra) nameParts.push("litra_" + safePart(saveLitra));
+                    if (saveAarstal) nameParts.push(safePart(saveAarstal));
+                    
+                    let baseName = nameParts.length > 0 ? nameParts.join('_') : 'data';
+                    baseName = baseName.replace(/_+/g, '_'); // Fjerner eventuelle dobbelte understreger
+                    
+                    link.download = `taksation_${baseName}_${new Date().toISOString().split('T')[0]}.csv`;
                     
                     document.body.appendChild(link);
                     link.click();
