@@ -103,12 +103,15 @@
             const [radius, setRadius] = useState(() => getSavedState('skov_radius', "")); 
             const [areal, setAreal] = useState(() => getSavedState('skov_areal', "")); 
             const [valgtTræIndeks, setValgtTræIndeks] = useState(() => getSavedState('skov_art', 7));
+            
+            // Ny state til at holde styr på hvor mange prøveflader der er smeltet sammen
+            const [antalFlader, setAntalFlader] = useState(() => getSavedState('skov_antal_flader', 1));
 
             // Træ-liste state
             const [trees, setTrees] = useState(() => getSavedState('skov_trees', []));
             const [savedPlots, setSavedPlots] = useState(() => getSavedState('skov_saved_plots', []));
             
-            // Stamdata / Metadata (Nu tilgængelige direkte fra forsiden)
+            // Stamdata / Metadata 
             const [saveSkov, setSaveSkov] = useState(() => getSavedState('skov_ejendom', ""));
             const [saveAfdeling, setSaveAfdeling] = useState(() => getSavedState('skov_afd', ""));
             const [saveLitra, setSaveLitra] = useState(() => getSavedState('skov_litra', ""));
@@ -143,10 +146,11 @@
                     localStorage.setItem('skov_afd', JSON.stringify(saveAfdeling));
                     localStorage.setItem('skov_litra', JSON.stringify(saveLitra));
                     localStorage.setItem('skov_aarstal', JSON.stringify(saveAarstal));
+                    localStorage.setItem('skov_antal_flader', JSON.stringify(antalFlader));
                 } catch (e) {
                     console.warn("Kunne ikke gemme lokalt.");
                 }
-            }, [radius, areal, valgtTræIndeks, trees, savedPlots, saveSkov, saveAfdeling, saveLitra, saveAarstal]);
+            }, [radius, areal, valgtTræIndeks, trees, savedPlots, saveSkov, saveAfdeling, saveLitra, saveAarstal, antalFlader]);
 
             // --- Interpolation af formtal ---
             const beregnFormtalFraGrid = (d, h, gridData) => {
@@ -210,6 +214,7 @@
             const rydAlt = () => {
                 setTrees([]); setRadius(""); setAreal(""); setValgtTræIndeks(7);
                 setSaveSkov(""); setSaveAfdeling(""); setSaveLitra(""); setSaveAarstal("");
+                setAntalFlader(1);
                 setVisRydBekræft(false);
             };
 
@@ -235,7 +240,7 @@
 
                 setSavedPlots([...savedPlots, {
                     id: Date.now(), name: plotName, date: new Date().toLocaleDateString('da-DK'),
-                    data: { radius, areal, valgtTræIndeks, trees, saveSkov, saveAfdeling, saveLitra, saveAarstal }
+                    data: { radius, areal, valgtTræIndeks, trees, saveSkov, saveAfdeling, saveLitra, saveAarstal, antalFlader }
                 }]);
                 setIsSaveModalOpen(false);
                 setSaveCustomName("");
@@ -244,6 +249,7 @@
             const loadPlot = (plot) => {
                 setRadius(plot.data.radius); setAreal(plot.data.areal);
                 setValgtTræIndeks(plot.data.valgtTræIndeks); setTrees(plot.data.trees);
+                setAntalFlader(plot.data.antalFlader || 1);
                 if(plot.data.saveSkov !== undefined) setSaveSkov(plot.data.saveSkov);
                 if(plot.data.saveAfdeling !== undefined) setSaveAfdeling(plot.data.saveAfdeling);
                 if(plot.data.saveLitra !== undefined) setSaveLitra(plot.data.saveLitra);
@@ -264,12 +270,16 @@
                 if (selectedForMerge.length < 2) return;
                 let totalSampleArea = 0; let combinedTrees = [];
                 let firstSkov = "", firstAfd = "", firstLitra = "", firstAar = "", firstAreal = "";
+                let totalPlots = 0;
 
                 selectedForMerge.forEach(id => {
                     const plot = savedPlots.find(p => p.id === id);
                     if (plot) {
                         const r = parseFloat(plot.data.radius.toString().replace(',', '.'));
                         if (!isNaN(r) && r > 0) totalSampleArea += Math.PI * Math.pow(r, 2);
+                        
+                        totalPlots += (plot.data.antalFlader || 1);
+
                         if (!firstAreal && plot.data.areal) firstAreal = plot.data.areal;
                         if (!firstSkov && plot.data.saveSkov) firstSkov = plot.data.saveSkov;
                         if (!firstAfd && plot.data.saveAfdeling) firstAfd = plot.data.saveAfdeling;
@@ -285,7 +295,9 @@
                     }
                 });
 
+                // Den matematiske radius for det samlede areal (gemmes i feltet for korrekt Hektar-udregning)
                 setRadius(formatDK(totalSampleArea > 0 ? Math.sqrt(totalSampleArea / Math.PI) : 0, 2));
+                setAntalFlader(totalPlots);
                 setAreal(firstAreal); setSaveSkov(firstSkov); setSaveAfdeling(firstAfd); setSaveLitra(firstLitra); setSaveAarstal(firstAar);
                 setTrees(combinedTrees); closeLoadModal();
             };
@@ -351,10 +363,12 @@
                 const navneArr = resultater.speciesStats.map(s => s.art);
                 const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
                 const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
+                const radNum = parseFloat(radius.toString().replace(',', '.'));
+                const gnsRadius = radNum > 0 ? Math.sqrt(Math.pow(radNum, 2) / antalFlader) : 0;
                 
                 let t = `SKOVTAKSATION: ${hovedNavn}\n`;
                 if(saveSkov || saveAfdeling) t += `Skov: ${saveSkov || '-'} | Afd: ${saveAfdeling || '-'} | Litra: ${saveLitra || '-'} | Alder: ${alder}\n`;
-                t += `Areal: ${formatDK(areal)} ha  |  Prøveflade r=${formatDK(radius)}m\n`;
+                t += `Areal: ${formatDK(areal)} ha  |  Gns. prøveflade r=${formatDK(gnsRadius, 1)}m (${antalFlader} flader)\n`;
                 t += `--------------------------------\nNØGLETAL\n• Målte træer:    ${trees.length} stk\n• Stamtal:        ${Math.round(resultater.stamtalPrHa)} stk/ha\n• Grundflade (G): ${formatDK(resultater.G_ha, 1)} m²/ha\n• Dg / Hg:        ${formatDK(resultater.Dg, 1)} cm / ${formatDK(resultater.Hg, 1)} m\n• Middeltræ (Vg): ${formatDK(resultater.v_g, 3)} m³\n• H/D forhold:    ${formatDK(resultater.HD_forhold, 1)}\n--------------------------------\nVEDMASSE\n• Pr. hektar:     ${formatDK(resultater.volumenHa, 1)} m³/ha\n• Total volumen:  ${formatDK(resultater.volumenTotal, 1)} m³\n`;
                 if (resultater.speciesStats.length > 1) {
                     t += `--------------------------------\nARTFORDELING\n`;
@@ -369,15 +383,19 @@
                 const navneArr = resultater.speciesStats.map(s => s.art);
                 const hovedNavn = navneArr.length > 1 ? 'Blandingsskov' : (navneArr[0] || TRAEARTER[valgtTræIndeks].navn);
                 const alder = saveAarstal ? `${new Date().getFullYear() - parseInt(saveAarstal)} år` : 'Ikke oplyst';
+                
+                const radNum = parseFloat(radius.toString().replace(',', '.'));
+                const gnsRadius = radNum > 0 ? Math.sqrt(Math.pow(radNum, 2) / antalFlader) : 0;
 
                 csv += "STAMDATA & METADATA\n";
                 csv += `Skov / Ejendom;${saveSkov || 'Ikke oplyst'}\n`;
                 csv += `Afdeling;${saveAfdeling || 'Ikke oplyst'}\n`;
                 csv += `Litra;${saveLitra || 'Ikke oplyst'}\n`;
                 csv += `Plantningsår;${saveAarstal || 'Ikke oplyst'}\n`;
-                csvContent = csv += `Bevoksningens alder;${alder}\n`;
+                csv += `Bevoksningens alder;${alder}\n`;
                 csv += `Skovtype / Hovedart;${hovedNavn}\n`;
-                csv += `Prøveflade radius (m);${formatDK(radius)}\n`;
+                csv += `Gennemsnitlig radius på prøveflade(r) (m);${formatDK(gnsRadius, 2)}\n`;
+                csv += `Antal prøveflader i beregningen;${antalFlader}\n`;
                 csv += `Totalt areal (ha);${formatDK(areal)}\n\n`;
                 
                 csv += "BEREGNEDE NØGLETAL (HA-NIVEAU)\n";
